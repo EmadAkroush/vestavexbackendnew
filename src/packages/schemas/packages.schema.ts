@@ -10,7 +10,10 @@ export class Package extends Document {
   range: string;
 
   @Prop({ required: true })
-  dailyRate: number;
+  maxCap: number;
+
+  @Prop({ required: true })
+  monthRate: number;
 
   @Prop({ required: true })
   minDeposit: number;

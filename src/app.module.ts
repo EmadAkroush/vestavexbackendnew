@@ -23,7 +23,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     ConfigModule.forRoot({ isGlobal: true }), // ✅ اضافه شد
     AuthModule,
     UsersModule,
-    MongooseModule.forRoot('mongodb://localhost:27017/forten'),
+    MongooseModule.forRoot('mongodb://localhost:27017/vesta'),
     PackagesModule,
     InvestmentsModule,
     TransactionsModule,

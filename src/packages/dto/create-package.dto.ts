@@ -8,7 +8,10 @@ export class CreatePackageDto {
   range: string;
 
   @IsNumber()
-  dailyRate: number;
+  monthRate: number;
+
+  @IsNumber()
+  maxCap: number;
 
   @IsNumber()
   minDeposit: number;

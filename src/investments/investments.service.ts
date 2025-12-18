@@ -177,13 +177,13 @@ export class InvestmentsService {
         }
 
         // تعیین نرخ روزانه مناسب (ممکن است با بونس تغییر کند) — با استفاده از computeBoostedRate
-        const chosenDailyRate = await computeBoostedRate(
+        const chosenMonthRate = await computeBoostedRate(
           newPackage.name,
-          newPackage.dailyRate,
+          newPackage.monthRate,
         );
 
         // نرخ نهایی را همیشه اعمال کن — چه پکیج تغییر کند چه نکند
-        investment.dailyRate = chosenDailyRate;
+        investment.dailyRate = chosenMonthRate;
 
         if (investment.package.toString() !== newPackage._id.toString()) {
           investment.package = newPackage._id as unknown as Types.ObjectId;
@@ -245,9 +245,9 @@ export class InvestmentsService {
         const finalPackage = selectedPackage || packages[packages.length - 1];
 
         // تعیین نرخ روزانه نهایی برای این کاربر (ممکن است بونس داشته باشد)
-        const finalDailyRate = await computeBoostedRate(
+        const finalMonthRate = await computeBoostedRate(
           finalPackage.name,
-          finalPackage.dailyRate,
+          finalPackage.monthRate,
         );
 
         // ساخت سرمایه‌گذاری جدید
@@ -255,7 +255,7 @@ export class InvestmentsService {
           user: user._id,
           package: finalPackage._id,
           amount: depositAmount,
-          dailyRate: finalDailyRate, // <-- اعمال نرخ نهایی
+          dailyRate: finalMonthRate, // <-- اعمال نرخ نهایی
           requiredReferrals: 3,
           status: 'active',
         });
