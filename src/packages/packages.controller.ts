@@ -1,33 +1,42 @@
-import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { PackagesService } from './packages.service';
-import { Package } from './schemas/packages.schema';
+import { CreatePackageDto } from './dto/create-package.dto';
+import { UpdatePackageDto } from './dto/update-package.dto';
 
 @Controller('packages')
 export class PackagesController {
   constructor(private readonly packagesService: PackagesService) {}
 
-  @Get()
-  async getAll(): Promise<Package[]> {
-    return this.packagesService.getAllPackages();
-  }
-
-  @Get(':id')
-  async getOne(@Param('id') id: string): Promise<Package> {
-    return this.packagesService.getPackageById(id);
-  }
-
+  // ➕ Create package (Admin)
   @Post()
-  async create(@Body() body: Partial<Package>): Promise<Package> {
-    return this.packagesService.createPackage(body);
+  create(@Body() dto: CreatePackageDto) {
+    return this.packagesService.create(dto);
   }
 
-  @Put(':id')
-  async update(@Param('id') id: string, @Body() body: Partial<Package>): Promise<Package> {
-    return this.packagesService.updatePackage(id, body);
+  // 📦 Get all packages
+  @Get()
+  findAll(@Query('all') all: string) {
+    return this.packagesService.findAll(all !== 'true');
   }
 
+  // 🔍 Get one package
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.packagesService.findOne(id);
+  }
+
+  // ✏️ Update package
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdatePackageDto,
+  ) {
+    return this.packagesService.update(id, dto);
+  }
+
+  // ❌ Delete package
   @Delete(':id')
-  async remove(@Param('id') id: string): Promise<{ deleted: boolean }> {
-    return this.packagesService.deletePackage(id);
+  remove(@Param('id') id: string) {
+    return this.packagesService.remove(id);
   }
 }

@@ -4,32 +4,31 @@ import { Document } from 'mongoose';
 @Schema({ timestamps: true })
 export class Package extends Document {
   @Prop({ required: true, unique: true })
-  name: string; // نام پکیج (مثلاً Starter, Growth, Pro)
+  name: string;
 
   @Prop({ required: true })
-  range: string; // محدوده مبلغ (مثلاً "$100 - $499")
+  range: string;
 
   @Prop({ required: true })
-  dailyRate: number; // درصد سود روزانه (مثلاً 1.5)
+  dailyRate: number;
 
   @Prop({ required: true })
-  minDeposit: number; // حداقل مبلغ سرمایه‌گذاری
+  minDeposit: number;
 
   @Prop({ required: true })
-  maxDeposit: number; // حداکثر مبلغ سرمایه‌گذاری
+  maxDeposit: number;
 
   @Prop({ default: 0 })
-  upgradeRate: number; 
-
-  
-  @Prop({ default: '' })
-  referralRequirement: string; // توضیحات
+  upgradeRate: number;
 
   @Prop({ default: '' })
-  description: string; // توضیحات
+  referralRequirement: string;
+
+  @Prop({ default: '' })
+  description: string;
 
   @Prop({ default: true })
-  isActive: boolean; // فعال یا غیرفعال بودن پکیج
+  isActive: boolean;
 }
 
 export const PackageSchema = SchemaFactory.createForClass(Package);

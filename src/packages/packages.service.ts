@@ -2,39 +2,42 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Package } from './schemas/packages.schema';
+import { CreatePackageDto } from './dto/create-package.dto';
+import { UpdatePackageDto } from './dto/update-package.dto';
 
 @Injectable()
 export class PackagesService {
   constructor(
-    @InjectModel(Package.name) private packageModel: Model<Package>,
+    @InjectModel(Package.name)
+    private readonly packageModel: Model<Package>,
   ) {}
 
-  async createPackage(data: Partial<Package>): Promise<Package> {
-    const newPack = new this.packageModel(data);
-    return await newPack.save();
+  async create(dto: CreatePackageDto) {
+    return this.packageModel.create(dto);
   }
 
-  async getAllPackages(): Promise<Package[]> {
-    return await this.packageModel.find().sort({ minDeposit: 1 }).exec();
+  async findAll(activeOnly = true) {
+    const filter = activeOnly ? { isActive: true } : {};
+    return this.packageModel.find(filter).sort({ minDeposit: 1 });
   }
 
-  async getPackageById(id: string): Promise<Package> {
-    const pack = await this.packageModel.findById(id).exec();
-    if (!pack) throw new NotFoundException('Package not found');
-    return pack;
+  async findOne(id: string) {
+    const pkg = await this.packageModel.findById(id);
+    if (!pkg) throw new NotFoundException('Package not found');
+    return pkg;
   }
 
-  async updatePackage(id: string, data: Partial<Package>): Promise<Package> {
-    const updated = await this.packageModel
-      .findByIdAndUpdate(id, data, { new: true })
-      .exec();
-    if (!updated) throw new NotFoundException('Package not found');
-    return updated;
+  async update(id: string, dto: UpdatePackageDto) {
+    const pkg = await this.packageModel.findByIdAndUpdate(id, dto, {
+      new: true,
+    });
+    if (!pkg) throw new NotFoundException('Package not found');
+    return pkg;
   }
 
-  async deletePackage(id: string): Promise<{ deleted: boolean }> {
-    const res = await this.packageModel.findByIdAndDelete(id).exec();
-    if (!res) throw new NotFoundException('Package not found');
-    return { deleted: true };
+  async remove(id: string) {
+    const pkg = await this.packageModel.findByIdAndDelete(id);
+    if (!pkg) throw new NotFoundException('Package not found');
+    return { message: 'Package deleted successfully' };
   }
 }
