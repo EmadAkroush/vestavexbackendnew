@@ -19,13 +19,8 @@ export class CreatePackageDto {
   @IsNumber()
   maxDeposit: number;
 
-  @IsOptional()
-  @IsNumber()
-  upgradeRate?: number;
 
-  @IsOptional()
-  @IsString()
-  referralRequirement?: string;
+
 
   @IsOptional()
   @IsString()

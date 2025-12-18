@@ -21,11 +21,8 @@ export class Package extends Document {
   @Prop({ required: true })
   maxDeposit: number;
 
-  @Prop({ default: 0 })
-  upgradeRate: number;
 
-  @Prop({ default: '' })
-  referralRequirement: string;
+
 
   @Prop({ default: '' })
   description: string;
