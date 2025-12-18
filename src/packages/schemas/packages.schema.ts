@@ -18,7 +18,7 @@ export class Package extends Document {
   @Prop({ required: true })
   minDeposit: number;
 
-  @Prop({ required: true })
+
   maxDeposit: number;
 
 
