@@ -5,7 +5,7 @@ import * as mongoose from 'mongoose'; // 👈 این خط اضافه شده
 @Schema({ timestamps: true })
 export class User extends Document {
   // ===== Basic Profile =====
-  @Prop({ required: true, unique: true })
+  @Prop({  unique: true })
   username: string;
 
   @Prop({ required: true })
