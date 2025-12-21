@@ -14,6 +14,12 @@ export class User extends Document {
   @Prop({ required: true })
   lastName: string;
 
+    @Prop({ type: String })
+  resetPasswordToken: string;
+
+  @Prop({ type: Date })
+  resetPasswordExpires: Date;
+
   @Prop({ required: true, unique: true, lowercase: true })
   email: string;
 
@@ -60,6 +66,8 @@ export class User extends Document {
 
   @Prop({ type: Number, default: 0 })
   bonusBalance: number;
+
+  
 
   @Prop({ default: null })
   refreshToken?: string; // هش شده‌ی رفرش‌توکن فعلی کاربر

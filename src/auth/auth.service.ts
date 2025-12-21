@@ -4,6 +4,7 @@ import {
   ConflictException,
   NotFoundException,
   BadRequestException,
+  Logger 
 } from '@nestjs/common';
 import { Referral } from '../referrals/schemas/referrals.schema';
 import { JwtService } from '@nestjs/jwt';
@@ -18,6 +19,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import axios from 'axios'; // ✅ اضافه شد برای ارتباط با reCAPTCHA API
 
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -25,7 +27,7 @@ export class AuthService {
     @InjectModel('Referral') private readonly referralModel: Model<Referral>,
     private jwtService: JwtService,
   ) {}
-
+private readonly logger = new Logger(AuthService.name);
   // ✅ متد جدید برای بررسی reCAPTCHA
   private async verifyRecaptcha(token: string) {
     const secret = process.env.RECAPTCHA_SECRET;
@@ -119,28 +121,33 @@ export class AuthService {
   }
 
   // === Login User ===
-  async login(email: string, password: string, recaptchaToken?: string) {
-    // 🧠 بررسی reCAPTCHA قبل از ورود
-    // if (!recaptchaToken)
-    //   throw new BadRequestException('Missing reCAPTCHA token');
-    // await this.verifyRecaptcha(recaptchaToken);
+async login(email: string, password: string, recaptchaToken?: string) {
+  // 🧠 بررسی reCAPTCHA قبل از ورود
+  if (!recaptchaToken)
+    throw new BadRequestException('Missing reCAPTCHA token');
+  await this.verifyRecaptcha(recaptchaToken);
 
-    const user = await this.userModel.findOne({ email });
-    if (!user) throw new UnauthorizedException('Invalid credentials');
+  const user = await this.userModel.findOne({ email });
+  if (!user) throw new UnauthorizedException('Invalid credentials');
 
-    const isVerified = (user as any).isVerified;
-    if (!isVerified)
-      throw new UnauthorizedException('Please verify your email first.');
+  // ⛔️ جلوگیری از ورود کاربر بلاک‌شده
+  if (user.isActive === false)
+    throw new UnauthorizedException('Your account has been blocked.');
 
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) throw new UnauthorizedException('Invalid credentials');
+  const isVerified = (user as any).isVerified;
+  if (!isVerified)
+    throw new UnauthorizedException('Please verify your email first.');
 
-    const userId = user._id.toString();
-    const tokens = await this.generateTokens(userId, user.email);
-    await this.updateRefreshToken(userId, tokens.refreshToken);
+  const valid = await bcrypt.compare(password, user.password);
+  if (!valid) throw new UnauthorizedException('Invalid credentials');
 
-    return { user, ...tokens };
-  }
+  const userId = user._id.toString();
+  const tokens = await this.generateTokens(userId, user.email);
+  await this.updateRefreshToken(userId, tokens.refreshToken);
+
+  return { user, ...tokens };
+}
+
 
   // === Refresh Token ===
   async refresh(authHeader: string) {
@@ -195,10 +202,10 @@ export class AuthService {
     const resetToken = randomBytes(32).toString('hex');
     const resetTokenExpires = new Date(Date.now() + 1000 * 60 * 30); // 30 دقیقه اعتبار
 
-    user.set('resetPasswordToken', resetToken);
-    user.set('resetPasswordExpires', resetTokenExpires);
-    await user.save();
-
+  user.set('resetPasswordToken', resetToken);
+  user.set('resetPasswordExpires', resetTokenExpires);
+  await user.save();
+  this.logger.log(`Saved token: ${(user as any).resetPasswordToken}`);
     await this.sendResetPasswordEmail(user.email, resetToken, user.firstName);
 
     return { message: 'Password reset email sent successfully' };
@@ -220,21 +227,49 @@ export class AuthService {
   }
 
   // === Reset Password ===
-  async resetPassword(token: string, newPassword: string) {
-    const user = await this.userModel.findOne({
-      resetPasswordToken: token,
-      resetPasswordExpires: { $gt: new Date() },
-    });
+ async resetPassword(token: string, newPassword: string) {
+    this.logger.log(`Reset password requested with token: ${token}`);
 
-    if (!user) throw new BadRequestException('Invalid or expired reset token');
+    try {
+      const user = await this.userModel.findOne({
+        resetPasswordToken: token,
+        resetPasswordExpires: { $gt: new Date() },
+      });
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    user.set('password', hashedPassword);
-    user.set('resetPasswordToken', null);
-    user.set('resetPasswordExpires', null);
-    await user.save();
+      if (!user) {
+        this.logger.warn(
+          `Invalid or expired reset token: ${token}`,
+        );
+        throw new BadRequestException('Invalid or expired reset token');
+      }
 
-    return { message: 'Password reset successfully. You can now log in.' };
+      this.logger.log(`User found for reset password. userId=${user._id}`);
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      this.logger.debug(`Password hashed successfully for userId=${user._id}`);
+
+      user.set('password', hashedPassword);
+      user.set('resetPasswordToken', null);
+      user.set('resetPasswordExpires', null);
+
+      await user.save();
+      this.logger.log(`Password reset successfully for userId=${user._id}`);
+
+      return {
+        message: 'Password reset successfully. You can now log in.',
+      };
+    } catch (error) {
+      this.logger.error(
+        `Reset password failed. token=${token}`,
+        error.stack,
+      );
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+  
+    }
   }
 
   // === Token Helpers ===
@@ -302,34 +337,70 @@ export class AuthService {
   }
 
   // === Send Password Reset Email ===
-  private async sendResetPasswordEmail(
-    email: string,
-    token: string,
-    firstName?: string,
-  ) {
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
-      },
-    });
+private async sendResetPasswordEmail(
+  email: string,
+  token: string,
+  firstName?: string,
+) {
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.MAIL_USER,
+      pass: process.env.MAIL_PASS,
+    },
+  });
 
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-    const templatePath = path.resolve(__dirname, '../templates/reset-password-email.html');
+  const resetUrl = `${process.env.FRONTEND_URL}/resetpassword?token=${token}`;
+  const name = firstName || 'User';
 
-    let html = fs
-      .readFileSync(templatePath, 'utf8')
-      .replace(/{{resetUrl}}/g, resetUrl)
-      .replace(/{{firstName \|\| 'کاربر'}}/g, firstName || 'کاربر');
+  // ============================
+  // 🔥 HTML Template Inline (English)
+  // ============================
+  const html = `
+  <div style="font-family: Arial, sans-serif; direction: ltr; text-align: left; background:#f5f5f5; padding:40px;">
+    <div style="max-width:600px; margin:auto; background:white; border-radius:12px; padding:30px; border:1px solid #eee;">
+      
+      <h2 style="color:#0b6d20;">Hello ${name} 🌿</h2>
 
-    const mailOptions = {
-      from: `"Forten Support" <${process.env.MAIL_USER}>`,
-      to: email,
-      subject: 'بازیابی رمز عبور — Forten',
-      html,
-    };
+      <p style="font-size:15px; color:#333;">
+        A password reset request has been submitted for your account at <strong>finalxcard</strong>.
+      </p>
 
-    await transporter.sendMail(mailOptions);
-  }
+      <p style="font-size:15px; color:#333;">
+        To reset your password, simply click the button below:
+      </p>
+
+      <div style="text-align:center; margin:35px 0;">
+        <a href="${resetUrl}" 
+          style="background:#0b6d20; color:white; padding:14px 28px; font-size:16px; border-radius:8px; text-decoration:none;">
+          Reset Password
+        </a>
+      </div>
+
+      <p style="font-size:13px; color:#777;">
+        If you did not request this action, please ignore this email.
+      </p>
+
+      <hr style="margin:25px 0; border:0; border-top:1px solid #eee;" />
+
+      <p style="font-size:12px; color:#999; text-align:center;">
+        finalxcard Support Team 🌱<br/>
+        This link is valid for 1 hour.
+      </p>
+
+    </div>
+  </div>
+  `;
+
+  const mailOptions = {
+    from: `"finalxcard Support" <${process.env.MAIL_USER}>`,
+    to: email,
+    subject: 'Password Reset — finalxcard',
+    html,
+  };
+
+  await transporter.sendMail(mailOptions);
+}
+
+
 }
