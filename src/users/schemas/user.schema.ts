@@ -47,6 +47,12 @@ export class User extends Document {
   mainBalance: number;
 
   @Prop({ type: Number, default: 0 })
+  maxCapBalance: number;
+
+  @Prop({ type: Number, default: 0 })
+  withdrawalTotalBalance: number;
+
+  @Prop({ type: Number, default: 0 })
   profitBalance: number;
 
   @Prop({ type: Number, default: 0 })
