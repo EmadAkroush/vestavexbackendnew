@@ -123,9 +123,9 @@ private readonly logger = new Logger(AuthService.name);
   // === Login User ===
 async login(email: string, password: string, recaptchaToken?: string) {
   // 🧠 بررسی reCAPTCHA قبل از ورود
-  if (!recaptchaToken)
-    throw new BadRequestException('Missing reCAPTCHA token');
-  await this.verifyRecaptcha(recaptchaToken);
+  // if (!recaptchaToken)
+  //   throw new BadRequestException('Missing reCAPTCHA token');
+  // await this.verifyRecaptcha(recaptchaToken);
 
   const user = await this.userModel.findOne({ email });
   if (!user) throw new UnauthorizedException('Invalid credentials');
