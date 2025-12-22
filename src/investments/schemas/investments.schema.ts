@@ -17,7 +17,7 @@ export class Investment extends Document {
 
   // درصد روزانه (از پکیج گرفته میشه ولی قابل override هست)
   @Prop({ type: Number, required: true })
-  dailyRate: number;
+  monthRate: number;
 
   // سود فعلی (مجموع تا این لحظه)
   @Prop({ type: Number, default: 0 })
@@ -38,16 +38,7 @@ export class Investment extends Document {
   @Prop({ type: Date })
   endDate?: Date;
 
-  // رفرال‌های فعال برای این پکیج
-  @Prop({ type: Number, default: 0 })
-  activeReferrals: number;
 
-  @Prop({ type: Number, default: 0 })
-  requiredReferrals: number;
-
-  // نرخ ارتقا یافته (درصورت فعال شدن با رفرال)
-  @Prop({ type: Number, default: 0 })
-  upgradedRate: number;
 
   // توضیحات
   @Prop({ type: String, default: '' })

@@ -111,7 +111,7 @@ async createInvestment(dto: CreateInvestmentDto) {
       }
 
       // ❗ نرخ ماهانه ثابت، بدون بونس
-      investment.dailyRate = newPackage.monthRate;
+      investment.monthRate = newPackage.monthRate;
 
       if (investment.package.toString() !== newPackage._id.toString()) {
         investment.package = newPackage._id as any;
@@ -160,8 +160,7 @@ async createInvestment(dto: CreateInvestmentDto) {
         user: user._id,
         package: finalPackage._id,
         amount: depositAmount,
-        dailyRate: finalMonthRate,
-        requiredReferrals: 3,
+        monthRate: finalMonthRate,
         status: 'active',
       });
 
@@ -219,7 +218,7 @@ async createInvestment(dto: CreateInvestmentDto) {
       .populate<{ package: Package }>('package');
 
     for (const inv of investments) {
-      const profit = (inv.amount * inv.dailyRate) / 100;
+      const profit = (inv.amount * inv.monthRate) / 100;
 
       // ✅ افزودن سود به سرمایه‌گذاری (سود مرکب)
       inv.totalProfit += profit;
@@ -238,7 +237,7 @@ async createInvestment(dto: CreateInvestmentDto) {
         amount: profit,
         currency: 'USD',
         status: 'completed',
-        note: `Daily profit (${inv.dailyRate}% of ${inv.amount - profit}) for ${inv.package.name}`,
+        note: `Daily profit (${inv.monthRate}% of ${inv.amount - profit}) for ${inv.package.name}`,
       });
 
       this.logger.log(
