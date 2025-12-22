@@ -86,6 +86,8 @@ async updateUser(userId: string, data: Partial<User>): Promise<User> {
 
     return {
       mainBalance: user.mainBalance ?? 0,
+      maxCapBalance: user.maxCapBalance ?? 0,
+      withdrawalTotalBalance: user.withdrawalTotalBalance ?? 0,
       profitBalance: user.profitBalance ?? 0,
       referralBalance: user.referralBalance ?? 0,
       bonusBalance: user.bonusBalance ?? 0,
