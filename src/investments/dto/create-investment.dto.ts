@@ -11,7 +11,8 @@ export class CreateInvestmentDto {
    @IsOptional()
   @IsMongoId()
   package: string;
-
+  
+  @IsOptional()
   @IsNumber()
   amount: number;
 
