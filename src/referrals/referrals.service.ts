@@ -128,25 +128,100 @@ export class ReferralsService {
   }
 
   // 📈 آمار کلی زیرمجموعه‌ها
-  async getReferralStats(userId: string) {
-    const referrals = await this.getUserReferrals(userId);
-    const totalReferrals = referrals.length;
-    const totalProfit = referrals.reduce(
-      (sum, r) => sum + (r.profitEarned || 0),
-      0,
+  async getReferralStats(
+  fromUserId: string,
+  investmentAmount: number,
+) {
+  this.logger.log(
+    `🚀 Binary profit calculation started from user ${fromUserId} with amount ${investmentAmount}`,
+  );
+
+  let currentUserId = fromUserId;
+  let level = 1;
+
+  while (true) {
+    const referral = await this.referralModel.findOne({
+      user: currentUserId,
+    });
+
+    if (!referral) {
+      this.logger.log('🟢 Reached root of binary tree');
+      break;
+    }
+
+    const parentId = referral.parent.toString();
+    const position = referral.position; // left | right
+
+    const parent = await this.usersService.findById(parentId);
+    if (!parent) break;
+
+    // 📊 افزایش حجم سمت مربوطه
+    if (position === 'left') {
+      parent.leftVolume = (parent.leftVolume || 0) + investmentAmount;
+    } else {
+      parent.rightVolume = (parent.rightVolume || 0) + investmentAmount;
+    }
+
+    await parent.save();
+
+    const left = parent.leftVolume || 0;
+    const right = parent.rightVolume || 0;
+
+    const balancedVolume = Math.min(left, right);
+    const payableUnits = Math.floor(balancedVolume / 200);
+
+    if (payableUnits <= 0) {
+      await this.transactionsService.createTransaction({
+        userId: parentId,
+        type: 'binary-profit',
+        amount: 0,
+        currency: 'USD',
+        status: 'rejected',
+        note: `Level ${level} | Not balanced | L=${left} R=${right}`,
+      });
+
+      this.logger.warn(
+        `⛔ Level ${level} | Parent ${parent.email} NOT balanced (L=${left}, R=${right})`,
+      );
+
+      currentUserId = parentId;
+      level++;
+      continue;
+    }
+
+    const profit = payableUnits * 35;
+
+    // 🧮 کسر حجم مصرف‌شده
+    parent.leftVolume -= payableUnits * 200;
+    parent.rightVolume -= payableUnits * 200;
+
+    await parent.save();
+
+    // 💰 افزودن سود
+    await this.usersService.addBalance(parentId, 'referralBalance', profit);
+    await this.usersService.addBalance(parentId, 'maxCapBalance', profit);
+
+    // 🧾 ثبت تراکنش
+    await this.transactionsService.createTransaction({
+      userId: parentId,
+      type: 'binary-profit',
+      amount: profit,
+      currency: 'USD',
+      status: 'completed',
+      note: `Level ${level} | Binary matched ${payableUnits * 200}$ | From user ${fromUserId}`,
+    });
+
+    this.logger.log(
+      `💰 Level ${level} | ${profit}$ binary profit paid to ${parent.email}`,
     );
 
-    const referredUsers = await Promise.all(
-      referrals.map(async (r) => {
-        const user = await this.usersService.findById(r.user._id.toString());
-        return user ? user.mainBalance + user.profitBalance : 0;
-      }),
-    );
-
-    const totalInvested = referredUsers.reduce((a, b) => a + b, 0);
-
-    return { totalReferrals, totalProfit, totalInvested };
+    currentUserId = parentId;
+    level++;
   }
+
+  this.logger.log('✅ Binary profit calculation completed');
+}
+
 
   async getReferralStatsCount(userId: string) {
     this.logger.log(`🚀 Calculating referral stats for userId: ${userId}`);

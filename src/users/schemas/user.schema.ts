@@ -5,7 +5,7 @@ import * as mongoose from 'mongoose'; // 👈 این خط اضافه شده
 @Schema({ timestamps: true })
 export class User extends Document {
   // ===== Basic Profile =====
-  @Prop({  unique: true })
+  @Prop({ unique: true })
   username: string;
 
   @Prop({ required: true })
@@ -14,7 +14,7 @@ export class User extends Document {
   @Prop({ required: true })
   lastName: string;
 
-    @Prop({ type: String })
+  @Prop({ type: String })
   resetPasswordToken: string;
 
   @Prop({ type: Date })
@@ -67,12 +67,17 @@ export class User extends Document {
   @Prop({ type: Number, default: 0 })
   bonusBalance: number;
 
-  
+  // ===== Binary Plan Volumes =====
+  @Prop({ type: Number, default: 0 })
+  leftVolume: number;
+
+  @Prop({ type: Number, default: 0 })
+  rightVolume: number;
 
   @Prop({ default: null })
   refreshToken?: string; // هش شده‌ی رفرش‌توکن فعلی کاربر
 
-    @Prop({ default: null })
+  @Prop({ default: null })
   verificationToken?: string; // هش شده‌ی رفرش‌توکن فعلی کاربر
 
   // ===== Security =====
@@ -92,7 +97,7 @@ export class User extends Document {
   @Prop({ default: true })
   isActive: boolean;
 
-    @Prop({ default: true })
+  @Prop({ default: true })
   isVerified: boolean;
 }
 
