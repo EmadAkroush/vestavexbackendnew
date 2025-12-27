@@ -332,46 +332,66 @@ async getReferralEarnings(userId: string) {
   };
 }
 
-  // 🔍 جزئیات نود (برای نمایش در درخت ریفرال)
-  async getReferralNodeDetails(userId: string, depth = 3) {
-    // تابع بازگشتی برای ساخت درخت
-    const buildTree = async (referrerId: string, level = 1): Promise<any[]> => {
-      if (level > depth) return [];
 
-      const referrals = await this.referralModel
-        .find({ referrer: new Types.ObjectId(referrerId) })
-        .populate(
-          'referredUser',
-          'firstName lastName email vxCode mainBalance profitBalance',
-        )
-        .exec();
 
-      return Promise.all(
-        referrals.map(async (r) => {
-          const referred = r.referredUser as any;
-          if (!referred) return null;
 
-          const children = await buildTree(referred._id.toString(), level + 1);
+  // 🌳 جزئیات نود برای نمایش درخت باینری
+async getReferralNodeDetails(userId: string, depth = Infinity) {
+  this.logger.log(`🌳 Building binary referral tree for user ${userId}`);
 
-          return {
-            id: referred._id.toString(),
-            name: `${referred.firstName} ${referred.lastName}`,
-            email: referred.email,
-            vxCode: referred.vxCode,
-            balances: {
-              main: referred.mainBalance,
-              profit: referred.profitBalance,
-            },
-            profitEarned: r.profitEarned,
-            joinedAt: r.joinedAt,
-            children, // 👈 اضافه شد برای نمایش سطح‌های پایین‌تر
-          };
-        }),
-      ).then((res) => res.filter(Boolean));
+  const buildTree = async (
+    parentId: string,
+    level = 1,
+  ): Promise<any | null> => {
+    if (level > depth) return null;
+
+    // 👤 اطلاعات خود کاربر
+    const user = await this.userModel
+      .findById(parentId)
+      .select(
+        '_id firstName lastName email vxCode mainBalance profitBalance referralBalance',
+      )
+      .lean();
+
+    if (!user) return null;
+
+    // 🔍 گرفتن فرزندان باینری (چپ و راست)
+    const children = await this.referralModel
+      .find({ parent: new Types.ObjectId(parentId) })
+      .populate(
+        'referredUser',
+        'firstName lastName email vxCode mainBalance profitBalance referralBalance',
+      )
+      .lean();
+
+    const leftChild = children.find((c) => c.position === 'left');
+    const rightChild = children.find((c) => c.position === 'right');
+
+    return {
+      id: user._id.toString(),
+      name: `${user.firstName} ${user.lastName}`,
+      email: user.email,
+      vxCode: user.vxCode,
+
+      balances: {
+        main: user.mainBalance,
+        profit: user.profitBalance,
+        referral: user.referralBalance,
+      },
+
+      // 📌 اطلاعات باینری
+      left: leftChild
+        ? await buildTree(leftChild.referredUser.toString(), level + 1)
+        : null,
+
+      right: rightChild
+        ? await buildTree(rightChild.referredUser.toString(), level + 1)
+        : null,
     };
+  };
 
-    return await buildTree(userId);
-  }
+  return await buildTree(userId);
+}
 
 
 
