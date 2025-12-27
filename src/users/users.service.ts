@@ -63,7 +63,7 @@ async updateUser(userId: string, data: Partial<User>): Promise<User> {
   // 💰 افزودن مبلغ به یکی از حساب‌ها
   async addBalance(
     userId: string,
-    type: 'mainBalance' | 'profitBalance' | 'referralBalance' | 'bonusBalance',
+    type: 'mainBalance' | 'profitBalance' | 'referralBalance' | 'bonusBalance' | 'maxCapBalance',
     amount: number,
   ) {
     const user = await this.findById(userId);

@@ -9,7 +9,6 @@ import { TransactionsService } from '../transactions/transactions.service'; // �
 import { User } from '../users/schemas/user.schema';
 import { InvestmentsService } from 'src/investments/investments.service';
 
-
 @Injectable()
 export class ReferralsService {
   private readonly logger = new Logger(ReferralsService.name);
@@ -19,7 +18,7 @@ export class ReferralsService {
     @InjectModel(User.name) private readonly userModel: Model<User>, // ✅ اضافه کن
     private readonly usersService: UsersService,
     private readonly transactionsService: TransactionsService, // ✅ اضافه شد
-    private readonly investmentsService: InvestmentsService, 
+    private readonly investmentsService: InvestmentsService,
   ) {}
 
   // 📥 ثبت زیرمجموعه جدید (در ثبت‌نام یا پروفایل)
@@ -60,31 +59,32 @@ export class ReferralsService {
 
   // 📊 لیست زیرمجموعه‌ها
   async getUserReferrals(userId: string) {
-  const rootUser = await this.usersService.findById(userId);
-  if (!rootUser) throw new NotFoundException('User not found');
+    const rootUser = await this.usersService.findById(userId);
+    if (!rootUser) throw new NotFoundException('User not found');
 
-  const buildTree = async (parentId: string): Promise<any> => {
-    const children = await this.referralModel
-      .find({ parent: new Types.ObjectId(parentId) })
-      .populate(
-        'referredUser',
-        'firstName lastName email vxCode mainBalance profitBalance',
-      )
-      .lean();
+    const buildTree = async (parentId: string): Promise<any> => {
+      const children = await this.referralModel
+        .find({ parent: new Types.ObjectId(parentId) })
+        .populate(
+          'referredUser',
+          'firstName lastName email vxCode mainBalance profitBalance',
+        )
+        .lean();
 
-    const left = children.find(c => c.position === 'left');
-    const right = children.find(c => c.position === 'right');
+      const left = children.find((c) => c.position === 'left');
+      const right = children.find((c) => c.position === 'right');
 
-    return {
-      user: await this.usersService.findById(parentId),
-      left: left ? await buildTree(left.referredUser._id.toString()) : null,
-      right: right ? await buildTree(right.referredUser._id.toString()) : null,
+      return {
+        user: await this.usersService.findById(parentId),
+        left: left ? await buildTree(left.referredUser._id.toString()) : null,
+        right: right
+          ? await buildTree(right.referredUser._id.toString())
+          : null,
+      };
     };
-  };
 
-  return buildTree(userId);
-}
-
+    return buildTree(userId);
+  }
 
   // 💰 افزودن سود ریفرال
   async addReferralProfit(
@@ -92,11 +92,39 @@ export class ReferralsService {
     amount: number,
     fromUserId: string,
   ) {
-    await this.referralModel.findOneAndUpdate(
-      { referrer: referrerId, referredUser: fromUserId },
-      { $inc: { profitEarned: amount } },
-    );
-    await this.usersService.addBalance(referrerId, 'referralBalance', amount);
+    let currentUserId = fromUserId;
+    let level = 1;
+
+    while (true) {
+      const referral = await this.referralModel.findOne({
+        user: currentUserId,
+      });
+
+      if (!referral) break; // رسیدیم به ریشه درخت
+
+      const parentId = referral.parent.toString();
+
+      // 🔍 گرفتن کاربر والد
+      const parent = await this.usersService.findById(parentId);
+      if (!parent) break;
+
+      // 💾 ثبت سود در جدول referral
+      await this.referralModel.findOneAndUpdate(
+        { parent: parentId, user: currentUserId },
+        { $inc: { profitEarned: amount } },
+        { upsert: true },
+      );
+
+      // 💰 افزودن سود به کیف پول ریفرال
+      await this.usersService.addBalance(parentId, 'referralBalance', amount);
+
+      // 🔒 افزودن همان سود به maxCapBalance (برای قانون 3x برداشت)
+      await this.usersService.addBalance(parentId, 'maxCapBalance', amount);
+
+      // ⬆️ حرکت به uplink
+      currentUserId = parentId;
+      level++;
+    }
   }
 
   // 📈 آمار کلی زیرمجموعه‌ها
@@ -224,13 +252,19 @@ export class ReferralsService {
 
     // 💰 محاسبه مجموع سرمایه‌گذاری هر سطح — فقط پکیج‌های active
     const calculateInvestments = async (users: any[]) => {
-      const investments = await Promise.all(users.map(async (user) => {
-        const userInvestments = await this.investmentsService.getUserInvestments(user._id);
-        const activeInvestments = (userInvestments || []).filter(
-          (inv: any) => inv && inv.status === 'active',
-        );
-        return activeInvestments.reduce((sum: number, inv: any) => sum + (Number(inv.amount) || 0), 0);
-      }));
+      const investments = await Promise.all(
+        users.map(async (user) => {
+          const userInvestments =
+            await this.investmentsService.getUserInvestments(user._id);
+          const activeInvestments = (userInvestments || []).filter(
+            (inv: any) => inv && inv.status === 'active',
+          );
+          return activeInvestments.reduce(
+            (sum: number, inv: any) => sum + (Number(inv.amount) || 0),
+            0,
+          );
+        }),
+      );
       return investments.reduce((total, investment) => total + investment, 0);
     };
 
