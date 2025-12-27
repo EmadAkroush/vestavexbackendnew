@@ -274,81 +274,63 @@ async getReferralStatsCount(userId: string) {
 }
 
 
-  // 🟢 محاسبه مجموع سرمایه‌گذاری‌ها در هر سطح (فقط پکیج‌هایی با status = 'active')
-  async getReferralEarnings(userId: string) {
-    this.logger.log(
-      `🚀 Calculating referral investments for userId: ${userId}`,
-    );
+  // 🟢 محاسبه مجموع سرمایه‌گذاری‌ها در هر سطح 
+// 🟢 محاسبه مجموع سرمایه‌گذاری‌های باینری (LEFT / RIGHT) تا بی‌نهایت
+async getReferralEarnings(userId: string) {
+  this.logger.log(`🚀 Calculating binary referral earnings for userId=${userId}`);
 
-    // 🧩 1. پیدا کردن کاربر اصلی
-    const rootUser = await this.userModel.findById(userId).lean();
-    if (!rootUser) {
-      this.logger.error(`❌ User not found for ID: ${userId}`);
-      throw new Error('User not found');
+  const rootUser = await this.userModel.findById(userId).lean();
+  if (!rootUser) {
+    throw new Error('User not found');
+  }
+
+  // 🔁 تابع بازگشتی برای جمع‌زدن volume
+  const calculateSideVolume = async (
+    parentId: string,
+    side: 'left' | 'right',
+  ): Promise<number> => {
+    let total = 0;
+
+    const children = await this.referralModel
+      .find({ parent: parentId, position: side })
+      .select('referredUser')
+      .lean();
+
+    for (const child of children) {
+      const userId = child.referredUser.toString();
+
+      // 🔹 سرمایه‌گذاری‌های active کاربر
+      const investments =
+        await this.investmentsService.getUserInvestments(userId);
+
+      const activeSum = (investments || [])
+        .filter((i: any) => i.status === 'active')
+        .reduce((sum: number, i: any) => sum + Number(i.amount || 0), 0);
+
+      total += activeSum;
+
+      // 🔁 ادامه به عمق
+      total += await calculateSideVolume(userId, 'left');
+      total += await calculateSideVolume(userId, 'right');
     }
 
-    const rootVxCode = rootUser.vxCode;
-    this.logger.debug(`🎯 Root vxCode: ${rootVxCode}`);
+    return total;
+  };
 
-    // 🟠 سطح 1: کاربران مستقیم
-    const level1Users = await this.userModel
-      .find({ referredBy: rootVxCode })
-      .select('_id vxCode')
-      .lean();
-    this.logger.debug(`📊 Level 1 referrals: ${level1Users.length}`);
+  const leftVolume = await calculateSideVolume(userId, 'left');
+  const rightVolume = await calculateSideVolume(userId, 'right');
 
-    // 🟡 سطح 2
-    const level1Codes = level1Users.map((u) => u.vxCode);
-    const level2Users = level1Codes.length
-      ? await this.userModel
-          .find({ referredBy: { $in: level1Codes } })
-          .select('_id vxCode')
-          .lean()
-      : [];
-    this.logger.debug(`📊 Level 2 referrals: ${level2Users.length}`);
+  this.logger.log(
+    `📊 Binary volumes for ${userId} → LEFT=${leftVolume}, RIGHT=${rightVolume}`,
+  );
 
-    // 🟢 سطح 3
-    const level2Codes = level2Users.map((u) => u.vxCode);
-    const level3Users = level2Codes.length
-      ? await this.userModel
-          .find({ referredBy: { $in: level2Codes } })
-          .select('_id vxCode')
-          .lean()
-      : [];
-    this.logger.debug(`📊 Level 3 referrals: ${level3Users.length}`);
-
-    // 💰 محاسبه مجموع سرمایه‌گذاری هر سطح — فقط پکیج‌های active
-    const calculateInvestments = async (users: any[]) => {
-      const investments = await Promise.all(
-        users.map(async (user) => {
-          const userInvestments =
-            await this.investmentsService.getUserInvestments(user._id);
-          const activeInvestments = (userInvestments || []).filter(
-            (inv: any) => inv && inv.status === 'active',
-          );
-          return activeInvestments.reduce(
-            (sum: number, inv: any) => sum + (Number(inv.amount) || 0),
-            0,
-          );
-        }),
-      );
-      return investments.reduce((total, investment) => total + investment, 0);
-    };
-
-    const level1Investment = await calculateInvestments(level1Users);
-    const level2Investment = await calculateInvestments(level2Users);
-    const level3Investment = await calculateInvestments(level3Users);
-
-    this.logger.log(
-      `✅ Referral investments (active only): L1=${level1Investment}, L2=${level2Investment}, L3=${level3Investment}`,
-    );
-
-    return {
-      level1Investment,
-      level2Investment,
-      level3Investment,
-    };
-  }
+  return {
+    leftVolume,
+    rightVolume,
+    weakerSide: Math.min(leftVolume, rightVolume),
+    strongerSide: Math.max(leftVolume, rightVolume),
+  };
+}
 
   // 🔍 جزئیات نود (برای نمایش در درخت ریفرال)
   async getReferralNodeDetails(userId: string, depth = 3) {
