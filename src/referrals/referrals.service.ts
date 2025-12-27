@@ -60,20 +60,31 @@ export class ReferralsService {
 
   // 📊 لیست زیرمجموعه‌ها
   async getUserReferrals(userId: string) {
-    const referrals = await this.referralModel
-      .find({ referrer: new Types.ObjectId(userId) })
+  const rootUser = await this.usersService.findById(userId);
+  if (!rootUser) throw new NotFoundException('User not found');
+
+  const buildTree = async (parentId: string): Promise<any> => {
+    const children = await this.referralModel
+      .find({ parent: new Types.ObjectId(parentId) })
       .populate(
-        'referredUser',
+        'user',
         'firstName lastName email vxCode mainBalance profitBalance',
       )
-      .exec();
+      .lean();
 
-    return referrals.map((r) => ({
-      user: r.referredUser,
-      profitEarned: r.profitEarned,
-      joinedAt: r.joinedAt,
-    }));
-  }
+    const left = children.find(c => c.position === 'left');
+    const right = children.find(c => c.position === 'right');
+
+    return {
+      user: await this.usersService.findById(parentId),
+      left: left ? await buildTree(left.user._id.toString()) : null,
+      right: right ? await buildTree(right.user._id.toString()) : null,
+    };
+  };
+
+  return buildTree(userId);
+}
+
 
   // 💰 افزودن سود ریفرال
   async addReferralProfit(
