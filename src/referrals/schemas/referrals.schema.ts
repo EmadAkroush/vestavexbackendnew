@@ -3,14 +3,24 @@ import { Document, Types } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class Referral extends Document {
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  referrer: Types.ObjectId; // لیدر (کسی که دعوت کرده)
+
+  // 🔹 حالت قدیمی (برای سازگاری)
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  referrer?: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  referredUser: Types.ObjectId; // کاربر دعوت‌شده
+  referredUser: Types.ObjectId;
 
+  // 🔹 باینری پلن (جدید)
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  parent?: Types.ObjectId; // uplink (leader)
+
+  @Prop({ enum: ['left', 'right'], index: true })
+  position?: 'left' | 'right';
+
+  // 🔹 مالی
   @Prop({ type: Number, default: 0 })
-  profitEarned: number; // سودی که لیدر از این زیرمجموعه گرفته
+  profitEarned: number;
 
   @Prop({ type: Date, default: Date.now })
   joinedAt: Date;

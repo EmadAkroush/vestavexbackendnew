@@ -67,7 +67,7 @@ export class ReferralsService {
     const children = await this.referralModel
       .find({ parent: new Types.ObjectId(parentId) })
       .populate(
-        'user',
+        'referredUser',
         'firstName lastName email vxCode mainBalance profitBalance',
       )
       .lean();
@@ -77,8 +77,8 @@ export class ReferralsService {
 
     return {
       user: await this.usersService.findById(parentId),
-      left: left ? await buildTree(left.user._id.toString()) : null,
-      right: right ? await buildTree(right.user._id.toString()) : null,
+      left: left ? await buildTree(left.referredUser._id.toString()) : null,
+      right: right ? await buildTree(right.referredUser._id.toString()) : null,
     };
   };
 
