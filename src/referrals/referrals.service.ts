@@ -223,64 +223,56 @@ export class ReferralsService {
 }
 
 
-  async getReferralStatsCount(userId: string) {
-    this.logger.log(`🚀 Calculating referral stats for userId: ${userId}`);
+async getReferralStatsCount(userId: string) {
+  this.logger.log(`🚀 Calculating BINARY referral stats for userId=${userId}`);
 
-    // 🧩 پیدا کردن کاربر اصلی
-    const rootUser = await this.userModel.findById(userId).lean();
-    if (!rootUser) {
-      this.logger.error(`❌ User not found for ID: ${userId}`);
-      throw new Error('User not found');
-    }
-
-    const rootVxCode = rootUser.vxCode;
-    this.logger.debug(`🎯 Root vxCode: ${rootVxCode}`);
-
-    // 🟠 سطح 1: تمام کسانی که referredBy = vxCode کاربر اصلی دارند
-    const level1 = await this.userModel
-      .find({ referredBy: rootVxCode })
-      .select('_id vxCode email firstName lastName')
-      .lean();
-    this.logger.debug(`🧩 Level 1 referrals found: ${level1.length}`);
-
-    // 🟡 سطح 2: کسانی که referredBy = vxCode یکی از level1 هستند
-    const level1Codes = level1.map((u) => u.vxCode).filter(Boolean);
-    const level2 = level1Codes.length
-      ? await this.userModel
-          .find({ referredBy: { $in: level1Codes } })
-          .select('_id vxCode email firstName lastName')
-          .lean()
-      : [];
-    this.logger.debug(`🧩 Level 2 referrals found: ${level2.length}`);
-
-    // 🟢 سطح 3: کسانی که referredBy = vxCode یکی از level2 هستند
-    const level2Codes = level2.map((u) => u.vxCode).filter(Boolean);
-    const level3 = level2Codes.length
-      ? await this.userModel
-          .find({ referredBy: { $in: level2Codes } })
-          .select('_id vxCode email firstName lastName')
-          .lean()
-      : [];
-    this.logger.debug(`🧩 Level 3 referrals found: ${level3.length}`);
-
-    // 📊 محاسبه درصد پیشرفت فرضی (مثلاً هر سطح کامل = 33%)
-    const totalLevels = 3;
-    const filledLevels = [level1.length, level2.length, level3.length].filter(
-      (l) => l > 0,
-    ).length;
-    const progress = Math.round((filledLevels / totalLevels) * 100);
-
-    this.logger.log(
-      `✅ Referral stats calculated: L1=${level1.length}, L2=${level2.length}, L3=${level3.length}`,
-    );
-
-    return {
-      level1Count: level1.length,
-      level2Count: level2.length,
-      level3Count: level3.length,
-      progress,
-    };
+  const rootUser = await this.userModel.findById(userId).lean();
+  if (!rootUser) {
+    this.logger.error(`❌ User not found: ${userId}`);
+    throw new Error('User not found');
   }
+
+  let totalNodes = 0;
+  let leftCount = 0;
+  let rightCount = 0;
+  let maxDepth = 0;
+
+  const traverse = async (
+    parentId: string,
+    depth: number,
+  ): Promise<void> => {
+    maxDepth = Math.max(maxDepth, depth);
+
+    const children = await this.referralModel
+      .find({ parent: parentId })
+      .select('referredUser position')
+      .lean();
+
+    for (const child of children) {
+      totalNodes++;
+
+      if (child.position === 'left') leftCount++;
+      if (child.position === 'right') rightCount++;
+
+      await traverse(child.referredUser.toString(), depth + 1);
+    }
+  };
+
+  // 🔁 شروع از ریشه
+  await traverse(userId, 1);
+
+  this.logger.log(
+    `✅ Binary stats: total=${totalNodes}, left=${leftCount}, right=${rightCount}, depth=${maxDepth}`,
+  );
+
+  return {
+    totalReferrals: totalNodes,
+    leftCount,
+    rightCount,
+    depth: maxDepth,
+  };
+}
+
 
   // 🟢 محاسبه مجموع سرمایه‌گذاری‌ها در هر سطح (فقط پکیج‌هایی با status = 'active')
   async getReferralEarnings(userId: string) {
