@@ -324,70 +324,131 @@ export class ReferralsService {
     return await buildTree(userId);
   }
 
-  @Cron('30 1 * * *')
-  async calculateReferralProfits() {
-    this.logger.log(
-      '🔁 Running daily referral profit calculation (corrected)...',
-    );
 
-    // دریافت تراکنش‌های سود روز گذشته
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const profitTransactions = await this.transactionsService.findByTypeAndDate(
-      'profit',
-      since,
-    );
 
-    for (const tx of profitTransactions) {
-      const userId = tx.userId.toString();
-      const user = await this.usersService.findById(userId);
-      if (!user || !user.referredBy) continue;
+  async calculateReferralProfits(
+  fromUserId: string,
+  investmentAmount: number,
+) {
+  this.logger.log(
+    `🔁 Binary profit calculation started from user=${fromUserId} amount=${investmentAmount}`,
+  );
 
-      const profitAmount = tx.amount; // سودی که از این سرمایه‌گذاری تولید شده
-      let currentReferrerCode = user.referredBy;
-      let level = 1;
+  let currentUserId = fromUserId;
+  let level = 1;
 
-      // تا سه سطح بالا
-      while (currentReferrerCode && level <= 3) {
-        const referrer =
-          await this.usersService.findByVxCode(currentReferrerCode);
-        if (!referrer) break;
+  while (true) {
+    const referral = await this.referralModel.findOne({
+      user: currentUserId,
+    });
 
-        let percentage = level === 1 ? 0.15 : level === 2 ? 0.1 : 0.05;
-        const reward = profitAmount * percentage;
-
-        if (reward > 0) {
-          await this.addReferralProfit(
-            referrer._id.toString(),
-            reward,
-            user._id.toString(),
-          );
-
-          // ثبت تراکنش ریفرال
-          await this.transactionsService.createTransaction({
-            userId: referrer._id.toString(),
-            type: 'referral-profit',
-            amount: reward,
-            currency: 'USD',
-            status: 'completed',
-            note: `Referral profit (Level ${level}) from ${user.email} | source: profit ${profitAmount}`,
-          });
-
-          this.logger.log(
-            `💰 Level ${level} referral profit: +${reward.toFixed(
-              2,
-            )} USD to ${referrer.email} from ${user.email}`,
-          );
-        }
-
-        currentReferrerCode = referrer.referredBy;
-        level++;
-      }
+    if (!referral) {
+      this.logger.log(`🛑 Reached root at level ${level}`);
+      break;
     }
 
+    const parentId = referral.parent.toString();
+    const position = referral.position;
+
     this.logger.log(
-      '✅ Referral profit distribution completed successfully (based on daily profits only).',
+      `⬆️ Level ${level} | child=${currentUserId} → parent=${parentId} | position=${position}`,
     );
+
+    /**
+     * 🔍 جمع سرمایه‌گذاری‌های هر دست
+     */
+    const leftUsers = await this.referralModel.find({
+      parent: parentId,
+      position: 'left',
+    });
+
+    const rightUsers = await this.referralModel.find({
+      parent: parentId,
+      position: 'right',
+    });
+
+    const leftTotal = await this.calculateTotalInvestment(leftUsers);
+    const rightTotal = await this.calculateTotalInvestment(rightUsers);
+
+    this.logger.log(
+      `📊 Level ${level} | Parent=${parentId} | Left=${leftTotal} | Right=${rightTotal}`,
+    );
+
+    const pairable = Math.min(leftTotal, rightTotal);
+    const pairs = Math.floor(pairable / 200);
+    const reward = pairs * 35;
+
+    if (reward > 0) {
+      this.logger.log(
+        `💰 Level ${level} | Parent=${parentId} earned=${reward}`,
+      );
+
+      // 💰 افزودن سود
+      await this.usersService.addBalance(
+        parentId,
+        'referralBalance',
+        reward,
+      );
+
+      await this.usersService.addBalance(
+        parentId,
+        'maxCapBalance',
+        reward,
+      );
+
+      // 💾 ثبت در referral
+      await this.referralModel.findOneAndUpdate(
+        { parent: parentId, user: currentUserId },
+        { $inc: { profitEarned: reward } },
+        { upsert: true },
+      );
+
+      // 🧾 ثبت تراکنش
+      await this.transactionsService.createTransaction({
+        userId: parentId,
+        type: 'binary-profit',
+        amount: reward,
+        currency: 'USD',
+        status: 'completed',
+        note: `Binary profit | Level ${level} | Pairs=${pairs} | Left=${leftTotal} | Right=${rightTotal}`,
+      });
+    } else {
+      // ❌ عدم دریافت سود
+      this.logger.warn(
+        `⚠️ Level ${level} | Parent=${parentId} NO PROFIT | Left=${leftTotal} | Right=${rightTotal}`,
+      );
+
+      await this.transactionsService.createTransaction({
+        userId: parentId,
+        type: 'binary-profit-skip',
+        amount: 0,
+        currency: 'USD',
+        status: 'skipped',
+        note: `Binary not balanced | Level ${level} | Left=${leftTotal} | Right=${rightTotal}`,
+      });
+    }
+
+    currentUserId = parentId;
+    level++;
   }
+
+  this.logger.log('✅ Binary profit calculation completed');
+}
+
+async calculateTotalInvestment(referrals: any[]) {
+  let total = 0;
+
+  for (const ref of referrals) {
+    const user = await this.usersService.findById(ref.user.toString());
+    if (!user) continue;
+
+    total += user.mainBalance || 0;
+  }
+
+  return total;
+}
+
+
 
   // 🧾 گرفتن تراکنش‌های ریفرال کاربر برای داشبورد
   async getReferralTransactions(userId: string) {
