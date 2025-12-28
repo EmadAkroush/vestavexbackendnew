@@ -129,14 +129,14 @@ export class ReferralsService {
 
   // 📈 آمار کلی زیرمجموعه‌ها
   async getReferralStats(
-  fromUserId: string,
+  userId: string,
   investmentAmount: number,
 ) {
   this.logger.log(
-    `🚀 Binary profit calculation started from user ${fromUserId} with amount ${investmentAmount}`,
+    `🚀 Binary profit calculation started from user ${userId} with amount ${investmentAmount}`,
   );
 
-  let currentUserId = fromUserId;
+  let currentUserId = userId;
   let level = 1;
 
   while (true) {
@@ -208,7 +208,7 @@ export class ReferralsService {
       amount: profit,
       currency: 'USD',
       status: 'completed',
-      note: `Level ${level} | Binary matched ${payableUnits * 200}$ | From user ${fromUserId}`,
+      note: `Level ${level} | Binary matched ${payableUnits * 200}$ | From user ${userId}`,
     });
 
     this.logger.log(

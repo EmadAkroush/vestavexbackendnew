@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards , Req } from '@nestjs/common';
 import { ReferralsService } from './referrals.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -7,7 +7,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 export class ReferralsController {
   constructor(private readonly referralsService: ReferralsService) {}
 
-    // 📥 ثبت زیرمجموعه جدید
+  // 📥 ثبت زیرمجموعه جدید
   @Post('register')
   async registerReferral(
     @Body('referrerCode') referrerCode: string,
@@ -16,7 +16,7 @@ export class ReferralsController {
     return this.referralsService.registerReferral(referrerCode, newUserId);
   }
 
-   @Post('earnings')
+  @Post('earnings')
   async getReferralEarnings(@Body() body: { userId: string }) {
     return this.referralsService.getReferralEarnings(body.userId);
   }
@@ -29,11 +29,16 @@ export class ReferralsController {
 
   // 📈 آمار کلی
   @Post('stats')
-  async getReferralStats(@Body('userId') userId: string) {
-    return this.referralsService.getReferralStats(userId);
+  async getReferralStats(
+    @Req() req,
+    @Body('investmentAmount') investmentAmount: number,
+  ) {
+    const userId = req.user.id;
+
+    return this.referralsService.getReferralStats(userId, investmentAmount);
   }
 
-    // 📈 آمار کلی
+  // 📈 آمار کلی
   @Post('statscount')
   async getReferralStatsCount(@Body('userId') userId: string) {
     return this.referralsService.getReferralStatsCount(userId);
