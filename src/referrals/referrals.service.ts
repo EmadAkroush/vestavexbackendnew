@@ -373,15 +373,26 @@ async getReferralEarnings(userId: string) {
   // 🌳 جزئیات نود برای نمایش درخت باینری
 // 🌳 جزئیات نود برای نمایش درخت باینری
 async getReferralNodeDetails(userId: string, depth = Infinity) {
-  this.logger.log(`🌳 Building binary referral tree for user ${userId}`);
+  this.logger.warn(
+    `🌳 [START] Building binary referral tree for user=${userId}, depth=${depth}`,
+  );
 
   const buildTree = async (
     parentId: string,
     level = 1,
   ): Promise<any | null> => {
-    if (level > depth) return null;
+    this.logger.warn(
+      `\n🔁 [LEVEL ${level}] buildTree called with parentId=${parentId}`,
+    );
 
-    // 👤 اطلاعات خود کاربر
+    if (level > depth) {
+      this.logger.warn(
+        `⛔ [LEVEL ${level}] Max depth reached, stopping recursion`,
+      );
+      return null;
+    }
+
+    // 1️⃣ Load user
     const user = await this.userModel
       .findById(parentId)
       .select(
@@ -389,26 +400,69 @@ async getReferralNodeDetails(userId: string, depth = Infinity) {
       )
       .lean();
 
-    if (!user) return null;
+    if (!user) {
+      this.logger.error(
+        `❌ [LEVEL ${level}] User NOT FOUND for id=${parentId}`,
+      );
+      return null;
+    }
 
-    // 🔍 گرفتن فرزندان باینری (چپ و راست)
+    this.logger.log(
+      `👤 [LEVEL ${level}] User loaded: ${user.firstName} ${user.lastName} (${user._id})`,
+    );
+
+    // 2️⃣ Load referrals (children)
     const children = await this.referralModel
       .find({ parent: new Types.ObjectId(parentId) })
       .populate(
         'referredUser',
-        'firstName lastName email vxCode activeVxCode mainBalance profitBalance referralBalance',
+        '_id firstName lastName email vxCode activeVxCode mainBalance profitBalance referralBalance',
       )
       .lean();
 
+    this.logger.log(
+      `👶 [LEVEL ${level}] Found ${children.length} referral(s) for parent=${parentId}`,
+    );
+
+    children.forEach((c, i) => {
+      this.logger.log(
+        `   ↳ child[${i}]: referralId=${c._id} position=${c.position} referredUser=${c.referredUser?._id}`,
+      );
+    });
+
     const leftChild = children.find((c) => c.position === 'left');
     const rightChild = children.find((c) => c.position === 'right');
+
+    if (!leftChild)
+      this.logger.warn(`⚠️ [LEVEL ${level}] LEFT child NOT found`);
+    if (!rightChild)
+      this.logger.warn(`⚠️ [LEVEL ${level}] RIGHT child NOT found`);
+
+    // 3️⃣ Recursion
+    const leftTree =
+      leftChild && leftChild.referredUser
+        ? await buildTree(
+            leftChild.referredUser._id.toString(),
+            level + 1,
+          )
+        : null;
+
+    const rightTree =
+      rightChild && rightChild.referredUser
+        ? await buildTree(
+            rightChild.referredUser._id.toString(),
+            level + 1,
+          )
+        : null;
+
+    this.logger.warn(
+      `✅ [LEVEL ${level}] Node ready for user=${user._id}`,
+    );
 
     return {
       id: user._id.toString(),
       name: `${user.firstName} ${user.lastName}`,
       email: user.email,
-
-      // ✅ فقط در صورت فعال بودن
       vxCode: user.activeVxCode ? user.vxCode : null,
 
       balances: {
@@ -417,19 +471,18 @@ async getReferralNodeDetails(userId: string, depth = Infinity) {
         referral: user.referralBalance,
       },
 
-      // 📌 اطلاعات باینری
-      left: leftChild
-        ? await buildTree(leftChild.referredUser.toString(), level + 1)
-        : null,
-
-      right: rightChild
-        ? await buildTree(rightChild.referredUser.toString(), level + 1)
-        : null,
+      left: leftTree,
+      right: rightTree,
     };
   };
 
-  return await buildTree(userId);
+  const tree = await buildTree(userId);
+
+  this.logger.warn(`🌳 [END] Tree build completed`);
+
+  return tree;
 }
+
 
 
 
