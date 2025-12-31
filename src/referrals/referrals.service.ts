@@ -57,6 +57,61 @@ export class ReferralsService {
     };
   }
 
+  async activateVxCode(userId: string) {
+  const VX_CODE_PRICE = 5;
+
+  const user = await this.usersService.findById(userId);
+  if (!user) {
+    throw new NotFoundException('User not found');
+  }
+
+  // ❌ اگر قبلاً فعال شده
+  if (user.activeVxCode) {
+    return {
+      success: false,
+      message: 'VX Code has already been activated.',
+    };
+  }
+
+  // ❌ اگر موجودی کافی نیست
+  if ((user.mainBalance || 0) < VX_CODE_PRICE) {
+    return {
+      success: false,
+      message: 'Insufficient balance. Minimum $5 required.',
+      required: VX_CODE_PRICE,
+      currentBalance: user.mainBalance || 0,
+    };
+  }
+
+  // ✅ کسر مبلغ
+  user.mainBalance -= VX_CODE_PRICE;
+
+  // ✅ فعال‌سازی VX Code
+  user.activeVxCode = true;
+
+  await user.save();
+
+  await this.transactionsService.createTransaction({
+  userId: user._id.toString(),
+  type: 'vx-code-activation',
+  amount: VX_CODE_PRICE,
+  currency: 'USD',
+  status: 'completed',
+  note: 'VX Code activation fee',
+});
+
+
+  return {
+    success: true,
+    message: 'VX Code activated successfully.',
+    balance: {
+      mainBalance: user.mainBalance,
+    },
+    activeVxCode: true,
+  };
+}
+
+
   // 📊 لیست زیرمجموعه‌ها
   async getUserReferrals(userId: string) {
     const rootUser = await this.usersService.findById(userId);

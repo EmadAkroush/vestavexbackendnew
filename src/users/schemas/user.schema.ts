@@ -39,6 +39,9 @@ export class User extends Document {
   @Prop({ unique: true })
   vxCode: string; // referral code
 
+  @Prop({ default: false })
+  activeVxCode?: boolean;
+
   @Prop({ default: null })
   referredBy?: string;
 

@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Param, UseGuards , Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { ReferralsService } from './referrals.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -19,6 +27,11 @@ export class ReferralsController {
   @Post('earnings')
   async getReferralEarnings(@Body() body: { userId: string }) {
     return this.referralsService.getReferralEarnings(body.userId);
+  }
+
+  @Post('activatevxcode')
+  async activateVxCode(@Body() body: { userId: string }) {
+    return this.referralsService.activateVxCode(body.userId);
   }
 
   // 📊 لیست زیرمجموعه‌ها
