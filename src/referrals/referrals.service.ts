@@ -371,6 +371,7 @@ async getReferralEarnings(userId: string) {
 
 
   // 🌳 جزئیات نود برای نمایش درخت باینری
+// 🌳 جزئیات نود برای نمایش درخت باینری
 async getReferralNodeDetails(userId: string, depth = Infinity) {
   this.logger.log(`🌳 Building binary referral tree for user ${userId}`);
 
@@ -384,7 +385,7 @@ async getReferralNodeDetails(userId: string, depth = Infinity) {
     const user = await this.userModel
       .findById(parentId)
       .select(
-        '_id firstName lastName email vxCode mainBalance profitBalance referralBalance',
+        '_id firstName lastName email vxCode activeVxCode mainBalance profitBalance referralBalance',
       )
       .lean();
 
@@ -395,7 +396,7 @@ async getReferralNodeDetails(userId: string, depth = Infinity) {
       .find({ parent: new Types.ObjectId(parentId) })
       .populate(
         'referredUser',
-        'firstName lastName email vxCode mainBalance profitBalance referralBalance',
+        'firstName lastName email vxCode activeVxCode mainBalance profitBalance referralBalance',
       )
       .lean();
 
@@ -406,7 +407,9 @@ async getReferralNodeDetails(userId: string, depth = Infinity) {
       id: user._id.toString(),
       name: `${user.firstName} ${user.lastName}`,
       email: user.email,
-      vxCode: user.vxCode,
+
+      // ✅ فقط در صورت فعال بودن
+      vxCode: user.activeVxCode ? user.vxCode : null,
 
       balances: {
         main: user.mainBalance,
@@ -427,6 +430,7 @@ async getReferralNodeDetails(userId: string, depth = Infinity) {
 
   return await buildTree(userId);
 }
+
 
 
 
