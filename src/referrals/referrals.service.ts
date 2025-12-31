@@ -183,99 +183,79 @@ export class ReferralsService {
   }
 
   // 📈 آمار کلی زیرمجموعه‌ها
-  async getReferralStats(
-  userId: string,
-  investmentAmount: number,
-) {
-  this.logger.log(
-    `🚀 Binary profit calculation started from user ${userId} with amount ${investmentAmount}`,
-  );
+async getReferralDashboardStats(userId: string) {
+  this.logger.log(`📊 Fetching referral dashboard stats for ${userId}`);
 
-  let currentUserId = userId;
-  let level = 1;
+  const user = await this.userModel.findById(userId).lean();
+  if (!user) throw new NotFoundException('User not found');
 
-  while (true) {
-    const referral = await this.referralModel.findOne({
-      user: currentUserId,
-    });
+  /* ============================
+     👥 TOTAL MEMBERS
+  ============================ */
+  const totalMembers = await this.referralModel.countDocuments({
+    parent: new Types.ObjectId(userId),
+  });
 
-    if (!referral) {
-      this.logger.log('🟢 Reached root of binary tree');
-      break;
-    }
+  /* ============================
+     📦 LEFT / RIGHT VOLUME
+  ============================ */
+  const { leftVolume, rightVolume } =
+    await this.getReferralEarnings(userId);
 
-    const parentId = referral.parent.toString();
-    const position = referral.position; // left | right
+  const totalTeamVolume = leftVolume + rightVolume;
 
-    const parent = await this.usersService.findById(parentId);
-    if (!parent) break;
+  /* ============================
+     💼 USER INVESTMENTS
+  ============================ */
+  const investments =
+    await this.investmentsService.getUserInvestments(userId);
 
-    // 📊 افزایش حجم سمت مربوطه
-    if (position === 'left') {
-      parent.leftVolume = (parent.leftVolume || 0) + investmentAmount;
-    } else {
-      parent.rightVolume = (parent.rightVolume || 0) + investmentAmount;
-    }
+  const totalActiveInvestment = (investments || [])
+    .filter((i) => i.status === 'active')
+    .reduce((sum, i) => sum + Number(i.amount || 0), 0);
 
-    await parent.save();
+  /* ============================
+     ⚖️ ACCOUNT CAPACITY (3x)
+  ============================ */
+  const accountCapacity = totalActiveInvestment * 3;
 
-    const left = parent.leftVolume || 0;
-    const right = parent.rightVolume || 0;
+  /* ============================
+     🔁 USED / FLUSH
+  ============================ */
+  const usedCapacity = Math.min(leftVolume, rightVolume);
 
-    const balancedVolume = Math.min(left, right);
-    const payableUnits = Math.floor(balancedVolume / 200);
+  const flushOut =
+    leftVolume !== rightVolume
+      ? Math.abs(leftVolume - rightVolume)
+      : 0;
 
-    if (payableUnits <= 0) {
-      await this.transactionsService.createTransaction({
-        userId: parentId,
-        type: 'binary-profit',
-        amount: 0,
-        currency: 'USD',
-        status: 'rejected',
-        note: `Level ${level} | Not balanced | L=${left} R=${right}`,
-      });
+  /* ============================
+     🔄 CYCLES
+  ============================ */
+  const vxc = Math.floor(usedCapacity / 200);
 
-      this.logger.warn(
-        `⛔ Level ${level} | Parent ${parent.email} NOT balanced (L=${left}, R=${right})`,
-      );
+  /* ============================
+     💸 WITHDRAWALS (READ ONLY)
+  ============================ */
+  const withdrawalTotalBalance = user.withdrawalTotalBalance || 0;
 
-      currentUserId = parentId;
-      level++;
-      continue;
-    }
+  return {
+    totalMembers,
+    totalTeamVolume,
 
-    const profit = payableUnits * 35;
+    leftVolume,
+    rightVolume,
 
-    // 🧮 کسر حجم مصرف‌شده
-    parent.leftVolume -= payableUnits * 200;
-    parent.rightVolume -= payableUnits * 200;
+    accountCapacity,
+    usedCapacity,
+    flushOut,
+    vxc,
 
-    await parent.save();
-
-    // 💰 افزودن سود
-    await this.usersService.addBalance(parentId, 'referralBalance', profit);
-    await this.usersService.addBalance(parentId, 'maxCapBalance', profit);
-
-    // 🧾 ثبت تراکنش
-    await this.transactionsService.createTransaction({
-      userId: parentId,
-      type: 'binary-profit',
-      amount: profit,
-      currency: 'USD',
-      status: 'completed',
-      note: `Level ${level} | Binary matched ${payableUnits * 200}$ | From user ${userId}`,
-    });
-
-    this.logger.log(
-      `💰 Level ${level} | ${profit}$ binary profit paid to ${parent.email}`,
-    );
-
-    currentUserId = parentId;
-    level++;
-  }
-
-  this.logger.log('✅ Binary profit calculation completed');
+    totalActiveInvestment,
+    withdrawalTotalBalance,
+  };
 }
+
 
 
 async getReferralStatsCount(userId: string) {

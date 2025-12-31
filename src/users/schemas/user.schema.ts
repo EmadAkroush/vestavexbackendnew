@@ -51,12 +51,16 @@ export class User extends Document {
   })
   referrals: mongoose.Types.ObjectId[];
 
+  @Prop({ type: Number, default: 0 })
+  accountCapacity: number;
+
   // ===== Financial Balances =====
   @Prop({ type: Number, default: 0 })
   mainBalance: number;
 
   @Prop({ type: Number, default: 0 })
   maxCapBalance: number;
+
 
   @Prop({ type: Number, default: 0 })
   withdrawalTotalBalance: number;

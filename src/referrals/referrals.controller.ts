@@ -42,13 +42,8 @@ export class ReferralsController {
 
   // 📈 آمار کلی
   @Post('stats')
-  async getReferralStats(
-    @Req() req,
-    @Body('investmentAmount') investmentAmount: number,
-  ) {
-    const userId = req.user.id;
-
-    return this.referralsService.getReferralStats(userId, investmentAmount);
+  async getReferralStats(@Body() body: { userId: string }) {
+    return this.referralsService.getReferralDashboardStats(body.userId);
   }
 
   // 📈 آمار کلی
