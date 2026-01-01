@@ -433,108 +433,167 @@ async getReferralEarnings(userId: string) {
 
   // 🌳 جزئیات نود برای نمایش درخت باینری
   // 🌳 جزئیات نود برای نمایش درخت باینری
-  async getReferralNodeDetails(userId: string, depth = Infinity) {
+async getReferralNodeDetails(userId: string, depth = Infinity) {
+  this.logger.warn(
+    `🌳 [START] Building binary referral tree for user=${userId}, depth=${depth}`,
+  );
+
+  /* =========================
+   🔢 CALCULATE SUBTREE VOLUME
+  ========================= */
+  const calculateSubtreeVolume = async (userId: string): Promise<number> => {
+    let total = 0;
+
+    // 🔹 سرمایه‌گذاری‌های active این کاربر
+    const investments =
+      await this.investmentsService.getUserInvestments(userId);
+
+    const activeSum = (investments || [])
+      .filter((i: any) => i.status === 'active')
+      .reduce((sum: number, i: any) => sum + Number(i.amount || 0), 0);
+
+    total += activeSum;
+
+    // 🔹 فرزندان باینری
+    const referrals = await this.referralModel
+      .find({ parent: new Types.ObjectId(userId) })
+      .select('referredUser')
+      .lean();
+
+    for (const r of referrals) {
+      total += await calculateSubtreeVolume(
+        r.referredUser.toString(),
+      );
+    }
+
+    return total;
+  };
+
+  /* =========================
+   🌳 BUILD TREE
+  ========================= */
+  const buildTree = async (
+    parentId: string,
+    level = 1,
+  ): Promise<any | null> => {
     this.logger.warn(
-      `🌳 [START] Building binary referral tree for user=${userId}, depth=${depth}`,
+      `\n🔁 [LEVEL ${level}] buildTree called with parentId=${parentId}`,
     );
 
-    const buildTree = async (
-      parentId: string,
-      level = 1,
-    ): Promise<any | null> => {
+    if (level > depth) {
       this.logger.warn(
-        `\n🔁 [LEVEL ${level}] buildTree called with parentId=${parentId}`,
+        `⛔ [LEVEL ${level}] Max depth reached, stopping recursion`,
       );
+      return null;
+    }
 
-      if (level > depth) {
-        this.logger.warn(
-          `⛔ [LEVEL ${level}] Max depth reached, stopping recursion`,
-        );
-        return null;
-      }
+    // 1️⃣ Load user
+    const user = await this.userModel
+      .findById(parentId)
+      .select(
+        '_id firstName lastName email vxCode activeVxCode mainBalance profitBalance referralBalance',
+      )
+      .lean();
 
-      // 1️⃣ Load user
-      const user = await this.userModel
-        .findById(parentId)
-        .select(
-          '_id firstName lastName email vxCode activeVxCode mainBalance profitBalance referralBalance',
-        )
-        .lean();
-
-      if (!user) {
-        this.logger.error(
-          `❌ [LEVEL ${level}] User NOT FOUND for id=${parentId}`,
-        );
-        return null;
-      }
-
-      this.logger.log(
-        `👤 [LEVEL ${level}] User loaded: ${user.firstName} ${user.lastName} (${user._id})`,
+    if (!user) {
+      this.logger.error(
+        `❌ [LEVEL ${level}] User NOT FOUND for id=${parentId}`,
       );
+      return null;
+    }
 
-      // 2️⃣ Load referrals (children)
-      const children = await this.referralModel
-        .find({ parent: new Types.ObjectId(parentId) })
-        .populate(
-          'referredUser',
-          '_id firstName lastName email vxCode activeVxCode mainBalance profitBalance referralBalance',
-        )
-        .lean();
+    this.logger.log(
+      `👤 [LEVEL ${level}] User loaded: ${user.firstName} ${user.lastName} (${user._id})`,
+    );
 
-      this.logger.log(
-        `👶 [LEVEL ${level}] Found ${children.length} referral(s) for parent=${parentId}`,
-      );
+    // 2️⃣ Load referrals (children)
+    const children = await this.referralModel
+      .find({ parent: new Types.ObjectId(parentId) })
+      .populate(
+        'referredUser',
+        '_id firstName lastName email vxCode activeVxCode mainBalance profitBalance referralBalance',
+      )
+      .lean();
 
-      children.forEach((c, i) => {
-        this.logger.log(
-          `   ↳ child[${i}]: referralId=${c._id} position=${c.position} referredUser=${c.referredUser?._id}`,
-        );
-      });
+    this.logger.log(
+      `👶 [LEVEL ${level}] Found ${children.length} referral(s) for parent=${parentId}`,
+    );
 
-      const leftChild = children.find((c) => c.position === 'left');
-      const rightChild = children.find((c) => c.position === 'right');
+    const leftChild = children.find((c) => c.position === 'left');
+    const rightChild = children.find((c) => c.position === 'right');
 
-      if (!leftChild)
-        this.logger.warn(`⚠️ [LEVEL ${level}] LEFT child NOT found`);
-      if (!rightChild)
-        this.logger.warn(`⚠️ [LEVEL ${level}] RIGHT child NOT found`);
+    // 3️⃣ Recursion
+    const leftTree =
+      leftChild?.referredUser
+        ? await buildTree(
+            leftChild.referredUser._id.toString(),
+            level + 1,
+          )
+        : null;
 
-      // 3️⃣ Recursion
-      const leftTree =
-        leftChild && leftChild.referredUser
-          ? await buildTree(leftChild.referredUser._id.toString(), level + 1)
-          : null;
+    const rightTree =
+      rightChild?.referredUser
+        ? await buildTree(
+            rightChild.referredUser._id.toString(),
+            level + 1,
+          )
+        : null;
 
-      const rightTree =
-        rightChild && rightChild.referredUser
-          ? await buildTree(rightChild.referredUser._id.toString(), level + 1)
-          : null;
-
-      this.logger.warn(`✅ [LEVEL ${level}] Node ready for user=${user._id}`);
-
-      return {
-        id: user._id.toString(),
-        name: `${user.firstName} ${user.lastName}`,
-        email: user.email,
-        vxCode: user.activeVxCode ? user.vxCode : null,
-
-        balances: {
-          main: user.mainBalance,
-          profit: user.profitBalance,
-          referral: user.referralBalance,
-        },
-
-        left: leftTree,
-        right: rightTree,
-      };
+    return {
+      id: user._id.toString(),
+      name: `${user.firstName} ${user.lastName}`,
+      email: user.email,
+      vxCode: user.activeVxCode ? user.vxCode : null,
+      balances: {
+        main: user.mainBalance,
+        profit: user.profitBalance,
+        referral: user.referralBalance,
+      },
+      left: leftTree,
+      right: rightTree,
     };
+  };
 
-    const tree = await buildTree(userId);
+  /* =========================
+   🌿 ROOT CHILDREN VOLUME
+  ========================= */
+  const leftReferral = await this.referralModel.findOne({
+    parent: new Types.ObjectId(userId),
+    position: 'left',
+  });
 
-    this.logger.warn(`🌳 [END] Tree build completed`);
+  const rightReferral = await this.referralModel.findOne({
+    parent: new Types.ObjectId(userId),
+    position: 'right',
+  });
 
-    return tree;
-  }
+  const leftVolume = leftReferral
+    ? await calculateSubtreeVolume(
+        leftReferral.referredUser.toString(),
+      )
+    : 0;
+
+  const rightVolume = rightReferral
+    ? await calculateSubtreeVolume(
+        rightReferral.referredUser.toString(),
+      )
+    : 0;
+
+  const tree = await buildTree(userId);
+
+  this.logger.warn(
+    `📊 FINAL VOLUMES → LEFT=${leftVolume} | RIGHT=${rightVolume}`,
+  );
+  this.logger.warn(`🌳 [END] Tree build completed`);
+
+  return {
+    tree,
+    leftVolume,
+    rightVolume,
+    totalTeamVolume: leftVolume + rightVolume,
+  };
+}
+
 
   async calculateReferralProfits(fromUserId: string, investmentAmount: number) {
     this.logger.log(
