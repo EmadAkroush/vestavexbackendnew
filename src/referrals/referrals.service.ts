@@ -340,64 +340,96 @@ export class ReferralsService {
   }
 
   // 🟢 محاسبه مجموع سرمایه‌گذاری‌ها در هر سطح
-  // 🟢 محاسبه مجموع سرمایه‌گذاری‌های باینری (LEFT / RIGHT) تا بی‌نهایت
-  async getReferralEarnings(userId: string) {
-    this.logger.log(
-      `🚀 Calculating binary referral earnings for userId=${userId}`,
+async getReferralEarnings(userId: string) {
+  this.logger.warn(
+    `🚀 START getReferralEarnings | root=${userId}`,
+  );
+
+  const calculateSubtreeVolume = async (
+    parentId: string,
+    level = 1,
+  ): Promise<number> => {
+    this.logger.warn(
+      `\n🔁 [LEVEL ${level}] calculateSubtreeVolume(parent=${parentId})`,
     );
 
-    const rootUser = await this.userModel.findById(userId).lean();
-    if (!rootUser) {
-      throw new Error('User not found');
+    let total = 0;
+
+    const referrals = await this.referralModel
+      .find({ parent: new Types.ObjectId(parentId) })
+      .select('referredUser')
+      .lean();
+
+    this.logger.warn(
+      `👶 [LEVEL ${level}] referrals found = ${referrals.length}`,
+    );
+
+    for (const r of referrals) {
+      const childId = r.referredUser.toString();
+
+      this.logger.warn(
+        `➡️ [LEVEL ${level}] visiting child=${childId}`,
+      );
+
+      const investments =
+        await this.investmentsService.getUserInvestments(childId);
+
+      const activeSum = (investments || [])
+        .filter((i) => i.status === 'active')
+        .reduce((sum, i) => sum + Number(i.amount || 0), 0);
+
+      this.logger.warn(
+        `💰 [LEVEL ${level}] child=${childId} activeSum=${activeSum}`,
+      );
+
+      total += activeSum;
+
+      total += await calculateSubtreeVolume(childId, level + 1);
     }
 
-    // 🔁 تابع بازگشتی برای جمع‌زدن volume
-    const calculateSideVolume = async (
-      parentId: string,
-      side: 'left' | 'right',
-    ): Promise<number> => {
-      let total = 0;
-
-      const children = await this.referralModel
-        .find({ parent: parentId, position: side })
-        .select('referredUser')
-        .lean();
-
-      for (const child of children) {
-        const userId = child.referredUser.toString();
-
-        // 🔹 سرمایه‌گذاری‌های active کاربر
-        const investments =
-          await this.investmentsService.getUserInvestments(userId);
-
-        const activeSum = (investments || [])
-          .filter((i: any) => i.status === 'active')
-          .reduce((sum: number, i: any) => sum + Number(i.amount || 0), 0);
-
-        total += activeSum;
-
-        // 🔁 ادامه به عمق
-        total += await calculateSideVolume(userId, 'left');
-        total += await calculateSideVolume(userId, 'right');
-      }
-
-      return total;
-    };
-
-    const leftVolume = await calculateSideVolume(userId, 'left');
-    const rightVolume = await calculateSideVolume(userId, 'right');
-
-    this.logger.log(
-      `📊 Binary volumes for ${userId} → LEFT=${leftVolume}, RIGHT=${rightVolume}`,
+    this.logger.warn(
+      `✅ [LEVEL ${level}] subtotal=${total}`,
     );
 
-    return {
-      leftVolume,
-      rightVolume,
-      weakerSide: Math.min(leftVolume, rightVolume),
-      strongerSide: Math.max(leftVolume, rightVolume),
-    };
-  }
+    return total;
+  };
+
+  // 🔹 لول اول
+  const leftChild = await this.referralModel.findOne({
+    parent: new Types.ObjectId(userId),
+    position: 'left',
+  });
+
+  const rightChild = await this.referralModel.findOne({
+    parent: new Types.ObjectId(userId),
+    position: 'right',
+  });
+
+  this.logger.warn(
+    `🌿 root children → left=${leftChild?.referredUser} | right=${rightChild?.referredUser}`,
+  );
+
+  const leftVolume = leftChild
+    ? await calculateSubtreeVolume(leftChild.referredUser.toString())
+    : 0;
+
+  const rightVolume = rightChild
+    ? await calculateSubtreeVolume(rightChild.referredUser.toString())
+    : 0;
+
+  this.logger.warn(
+    `📊 FINAL volumes → LEFT=${leftVolume}, RIGHT=${rightVolume}`,
+  );
+
+  return {
+    leftVolume,
+    rightVolume,
+    weakerSide: Math.min(leftVolume, rightVolume),
+    strongerSide: Math.max(leftVolume, rightVolume),
+  };
+}
+
+
 
   // 🌳 جزئیات نود برای نمایش درخت باینری
   // 🌳 جزئیات نود برای نمایش درخت باینری
