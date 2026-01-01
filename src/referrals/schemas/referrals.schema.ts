@@ -4,26 +4,57 @@ import { Document, Types } from 'mongoose';
 @Schema({ timestamps: true })
 export class Referral extends Document {
 
-  // 🔹 حالت قدیمی (برای سازگاری)
-  @Prop({ type: Types.ObjectId, ref: 'User' })
-  referrer?: Types.ObjectId;
+  /**
+   * 🧬 Binary Tree Parent (uplink)
+   * هر کاربر فقط می‌تونه یک parent داشته باشه
+   */
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true,
+  })
+  parent: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  /**
+   * 👤 Child user
+   * هر کاربر فقط یک‌بار می‌تونه داخل درخت باشه
+   */
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'User',
+    required: true,
+    unique: true,
+    index: true,
+  })
   referredUser: Types.ObjectId;
 
-  // 🔹 باینری پلن (جدید)
-  @Prop({ type: Types.ObjectId, ref: 'User' })
-  parent?: Types.ObjectId; // uplink (leader)
+  /**
+   * 📍 Position in binary tree
+   * left | right
+   */
+  @Prop({
+    type: String,
+    enum: ['left', 'right'],
+    required: true,
+    index: true,
+  })
+  position: 'left' | 'right';
 
-  @Prop({ enum: ['left', 'right'], index: true })
-  position?: 'left' | 'right';
-
-  // 🔹 مالی
+  /**
+   * 💰 Binary profit (optional / future use)
+   */
   @Prop({ type: Number, default: 0 })
   profitEarned: number;
-
-  @Prop({ type: Date, default: Date.now })
-  joinedAt: Date;
 }
 
 export const ReferralSchema = SchemaFactory.createForClass(Referral);
+
+/**
+ * 🔒 CRITICAL UNIQUE INDEX
+ * هر parent فقط یک left و یک right
+ */
+ReferralSchema.index(
+  { parent: 1, position: 1 },
+  { unique: true }
+);

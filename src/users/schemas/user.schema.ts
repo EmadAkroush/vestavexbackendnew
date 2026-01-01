@@ -45,11 +45,6 @@ export class User extends Document {
   @Prop({ default: null })
   referredBy?: string;
 
-  @Prop({
-    type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-    default: [],
-  })
-  referrals: mongoose.Types.ObjectId[];
 
   @Prop({ type: Number, default: 0 })
   accountCapacity: number;

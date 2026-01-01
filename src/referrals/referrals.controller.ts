@@ -20,8 +20,9 @@ export class ReferralsController {
   async registerReferral(
     @Body('referrerCode') referrerCode: string,
     @Body('newUserId') newUserId: string,
+    @Body('position') position: 'left' | 'right',
   ) {
-    return this.referralsService.registerReferral(referrerCode, newUserId);
+    return this.referralsService.registerReferral(referrerCode  , newUserId , position  );
   }
 
   @Post('earnings')
