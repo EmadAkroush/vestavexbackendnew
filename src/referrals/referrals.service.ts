@@ -444,7 +444,7 @@ async getReferralNodeDetails(userId: string, depth = Infinity) {
   const calculateSubtreeVolume = async (userId: string): Promise<number> => {
     let total = 0;
 
-    // 🔹 سرمایه‌گذاری‌های active این کاربر
+    // 🔹 active investments of this user
     const investments =
       await this.investmentsService.getUserInvestments(userId);
 
@@ -454,7 +454,7 @@ async getReferralNodeDetails(userId: string, depth = Infinity) {
 
     total += activeSum;
 
-    // 🔹 فرزندان باینری
+    // 🔹 children
     const referrals = await this.referralModel
       .find({ parent: new Types.ObjectId(userId) })
       .select('referredUser')
@@ -481,9 +481,6 @@ async getReferralNodeDetails(userId: string, depth = Infinity) {
     );
 
     if (level > depth) {
-      this.logger.warn(
-        `⛔ [LEVEL ${level}] Max depth reached, stopping recursion`,
-      );
       return null;
     }
 
@@ -495,35 +492,38 @@ async getReferralNodeDetails(userId: string, depth = Infinity) {
       )
       .lean();
 
-    if (!user) {
-      this.logger.error(
-        `❌ [LEVEL ${level}] User NOT FOUND for id=${parentId}`,
-      );
-      return null;
-    }
+    if (!user) return null;
 
-    this.logger.log(
-      `👤 [LEVEL ${level}] User loaded: ${user.firstName} ${user.lastName} (${user._id})`,
-    );
-
-    // 2️⃣ Load referrals (children)
+    // 2️⃣ Load direct children
     const children = await this.referralModel
       .find({ parent: new Types.ObjectId(parentId) })
+      .select('position referredUser')
       .populate(
         'referredUser',
         '_id firstName lastName email vxCode activeVxCode mainBalance profitBalance referralBalance',
       )
       .lean();
 
-    this.logger.log(
-      `👶 [LEVEL ${level}] Found ${children.length} referral(s) for parent=${parentId}`,
-    );
-
     const leftChild = children.find((c) => c.position === 'left');
     const rightChild = children.find((c) => c.position === 'right');
 
-    // 3️⃣ Recursion
-    const leftTree =
+    // 3️⃣ Calculate volumes FOR THIS NODE
+    const leftVolume = leftChild?.referredUser
+      ? await calculateSubtreeVolume(
+          leftChild.referredUser._id.toString(),
+        )
+      : 0;
+
+    const rightVolume = rightChild?.referredUser
+      ? await calculateSubtreeVolume(
+          rightChild.referredUser._id.toString(),
+        )
+      : 0;
+
+    const totalTeamVolume = leftVolume + rightVolume;
+
+    // 4️⃣ Recursion
+    const left =
       leftChild?.referredUser
         ? await buildTree(
             leftChild.referredUser._id.toString(),
@@ -531,7 +531,7 @@ async getReferralNodeDetails(userId: string, depth = Infinity) {
           )
         : null;
 
-    const rightTree =
+    const right =
       rightChild?.referredUser
         ? await buildTree(
             rightChild.referredUser._id.toString(),
@@ -544,54 +544,29 @@ async getReferralNodeDetails(userId: string, depth = Infinity) {
       name: `${user.firstName} ${user.lastName}`,
       email: user.email,
       vxCode: user.activeVxCode ? user.vxCode : null,
+
       balances: {
         main: user.mainBalance,
         profit: user.profitBalance,
         referral: user.referralBalance,
       },
-      left: leftTree,
-      right: rightTree,
+
+      volumes: {
+        leftVolume,
+        rightVolume,
+        totalTeamVolume,
+      },
+
+      left,
+      right,
     };
   };
 
-  /* =========================
-   🌿 ROOT CHILDREN VOLUME
-  ========================= */
-  const leftReferral = await this.referralModel.findOne({
-    parent: new Types.ObjectId(userId),
-    position: 'left',
-  });
-
-  const rightReferral = await this.referralModel.findOne({
-    parent: new Types.ObjectId(userId),
-    position: 'right',
-  });
-
-  const leftVolume = leftReferral
-    ? await calculateSubtreeVolume(
-        leftReferral.referredUser.toString(),
-      )
-    : 0;
-
-  const rightVolume = rightReferral
-    ? await calculateSubtreeVolume(
-        rightReferral.referredUser.toString(),
-      )
-    : 0;
-
   const tree = await buildTree(userId);
 
-  this.logger.warn(
-    `📊 FINAL VOLUMES → LEFT=${leftVolume} | RIGHT=${rightVolume}`,
-  );
   this.logger.warn(`🌳 [END] Tree build completed`);
 
-  return {
-    tree,
-    leftVolume,
-    rightVolume,
-    totalTeamVolume: leftVolume + rightVolume,
-  };
+  return tree;
 }
 
 
