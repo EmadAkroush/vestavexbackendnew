@@ -164,16 +164,16 @@ export class PaymentsService {
         );
 
         // 🎁 بررسی پاداش لیدر
-        try {
-          await this.bonusesService.checkAndAwardReferralBonus(
-            payment.userId,
-            actualAmount,
-          );
-        } catch (bonusError) {
-          this.logger.warn(
-            `⚠️ Bonus check failed for user ${payment.userId}: ${bonusError.message}`,
-          );
-        }
+        // try {
+        //   await this.bonusesService.checkAndAwardReferralBonus(
+        //     payment.userId,
+        //     actualAmount,
+        //   );
+        // } catch (bonusError) {
+        //   this.logger.warn(
+        //     `⚠️ Bonus check failed for user ${payment.userId}: ${bonusError.message}`,
+        //   );
+        // }
       }
 
       await payment.save();

@@ -42,9 +42,6 @@ export class User extends Document {
   @Prop({ default: false })
   activeVxCode?: boolean;
 
-  @Prop({ default: null })
-  referredBy?: string;
-
 
   @Prop({ type: Number, default: 0 })
   accountCapacity: number;

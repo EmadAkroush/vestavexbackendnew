@@ -84,9 +84,7 @@ export class ReferralsService {
       position,
     });
 
-    // 🧾 فقط برای UX (نمایش لیدر)
-    newUser.referredBy = parent.vxCode;
-    await newUser.save();
+
 
     return {
       success: true,
