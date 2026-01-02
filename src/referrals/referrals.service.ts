@@ -147,34 +147,6 @@ export class ReferralsService {
     };
   }
 
-  // 📊 لیست زیرمجموعه‌ها
-  async getUserReferrals(userId: string) {
-    const rootUser = await this.usersService.findById(userId);
-    if (!rootUser) throw new NotFoundException('User not found');
-
-    const buildTree = async (parentId: string): Promise<any> => {
-      const children = await this.referralModel
-        .find({ parent: new Types.ObjectId(parentId) })
-        .populate(
-          'referredUser',
-          'firstName lastName email vxCode mainBalance profitBalance',
-        )
-        .lean();
-
-      const left = children.find((c) => c.position === 'left');
-      const right = children.find((c) => c.position === 'right');
-
-      return {
-        user: await this.usersService.findById(parentId),
-        left: left ? await buildTree(left.referredUser._id.toString()) : null,
-        right: right
-          ? await buildTree(right.referredUser._id.toString())
-          : null,
-      };
-    };
-
-    return buildTree(userId);
-  }
 
   // 💰 افزودن سود ریفرال
   async addReferralProfit(

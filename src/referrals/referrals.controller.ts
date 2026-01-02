@@ -35,11 +35,7 @@ export class ReferralsController {
     return this.referralsService.activateVxCode(body.userId);
   }
 
-  // 📊 لیست زیرمجموعه‌ها
-  @Post()
-  async getUserReferrals(@Body('userId') userId: string) {
-    return this.referralsService.getUserReferrals(userId);
-  }
+
 
   // 📈 آمار کلی
   @Post('stats')
