@@ -258,54 +258,7 @@ export class ReferralsService {
     };
   }
 
-  async getReferralStatsCount(userId: string) {
-    this.logger.log(
-      `🚀 Calculating BINARY referral stats for userId=${userId}`,
-    );
 
-    const rootUser = await this.userModel.findById(userId).lean();
-    if (!rootUser) {
-      this.logger.error(`❌ User not found: ${userId}`);
-      throw new Error('User not found');
-    }
-
-    let totalNodes = 0;
-    let leftCount = 0;
-    let rightCount = 0;
-    let maxDepth = 0;
-
-    const traverse = async (parentId: string, depth: number): Promise<void> => {
-      maxDepth = Math.max(maxDepth, depth);
-
-      const children = await this.referralModel
-        .find({ parent: parentId })
-        .select('referredUser position')
-        .lean();
-
-      for (const child of children) {
-        totalNodes++;
-
-        if (child.position === 'left') leftCount++;
-        if (child.position === 'right') rightCount++;
-
-        await traverse(child.referredUser.toString(), depth + 1);
-      }
-    };
-
-    // 🔁 شروع از ریشه
-    await traverse(userId, 1);
-
-    this.logger.log(
-      `✅ Binary stats: total=${totalNodes}, left=${leftCount}, right=${rightCount}, depth=${maxDepth}`,
-    );
-
-    return {
-      totalReferrals: totalNodes,
-      leftCount,
-      rightCount,
-      depth: maxDepth,
-    };
-  }
 
   // 🟢 محاسبه مجموع سرمایه‌گذاری‌ها در هر سطح
   async getReferralEarnings(userId: string) {
