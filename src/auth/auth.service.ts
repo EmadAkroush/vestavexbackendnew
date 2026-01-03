@@ -77,7 +77,7 @@ private readonly logger = new Logger(AuthService.name);
       const referrer = await this.userModel.findOne({ vxCode: dto.referrerCode });
       if (referrer) {
         // ثبت رابطه‌ی ارجاع
-        // user.referredBy = referrer.vxCode;
+        user.referredBy = referrer.vxCode;
         await user.save();
 
         await this.referralModel.create({
@@ -85,7 +85,7 @@ private readonly logger = new Logger(AuthService.name);
           referredUser: user._id,
         });
 
-        // referrer.referrals.push(new mongoose.Types.ObjectId(user._id.toString()));
+        referrer.referrals.push(new mongoose.Types.ObjectId(user._id.toString()));
         await referrer.save();
       } else {
         // ⚠️ اگر کد لیدر اشتباه بود — برای فرانت اند ارسال شود

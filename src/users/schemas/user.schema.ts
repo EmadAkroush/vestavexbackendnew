@@ -46,6 +46,12 @@ export class User extends Document {
   @Prop({ type: Number, default: 0 })
   accountCapacity: number;
 
+    @Prop({  })
+  referredBy: string;
+
+    @Prop({ Array  })
+  referrals: any;
+
   // ===== Financial Balances =====
   @Prop({ type: Number, default: 0 })
   mainBalance: number;
@@ -62,6 +68,8 @@ export class User extends Document {
 
   @Prop({ type: Number, default: 0 })
   referralBalance: number;
+
+
 
   @Prop({ type: Number, default: 0 })
   bonusBalance: number;

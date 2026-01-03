@@ -25,10 +25,6 @@ export class ReferralsController {
     return this.referralsService.registerReferral(referrerCode  , newUserId , position  );
   }
 
-  @Post('earnings')
-  async getReferralEarnings(@Body() body: { userId: string }) {
-    return this.referralsService.getReferralEarnings(body.userId);
-  }
 
   @Post('activatevxcode')
   async activateVxCode(@Body() body: { userId: string }) {
