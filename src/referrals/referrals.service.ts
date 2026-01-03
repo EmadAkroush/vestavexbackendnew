@@ -196,19 +196,14 @@ export class ReferralsService {
     const user = await this.userModel.findById(userId).lean();
     if (!user) throw new NotFoundException('User not found');
 
-    /* ============================
-     👥 TOTAL MEMBERS
-  ============================ */
-    const totalMembers = await this.referralModel.countDocuments({
-      parent: new Types.ObjectId(userId),
-    });
+
 
     /* ============================
      📦 LEFT / RIGHT VOLUME
   ============================ */
-    const { leftVolume, rightVolume } = await this.getReferralEarnings(userId);
+    // const { leftVolume, rightVolume } = await this.getReferralEarnings(userId);
 
-    const totalTeamVolume = leftVolume + rightVolume;
+    // const totalTeamVolume = leftVolume + rightVolume;
 
     /* ============================
      💼 USER INVESTMENTS
@@ -228,15 +223,15 @@ export class ReferralsService {
     /* ============================
      🔁 USED / FLUSH
   ============================ */
-    const usedCapacity = Math.min(leftVolume, rightVolume);
+    // const usedCapacity = Math.min(leftVolume, rightVolume);
 
-    const flushOut =
-      leftVolume !== rightVolume ? Math.abs(leftVolume - rightVolume) : 0;
+    // const flushOut =
+    //   leftVolume !== rightVolume ? Math.abs(leftVolume - rightVolume) : 0;
 
     /* ============================
      🔄 CYCLES
   ============================ */
-    const vxc = Math.floor(usedCapacity / 200);
+    // const vxc = Math.floor(usedCapacity / 200);
 
     /* ============================
      💸 WITHDRAWALS (READ ONLY)
@@ -244,105 +239,14 @@ export class ReferralsService {
     const withdrawalTotalBalance = user.withdrawalTotalBalance || 0;
 
     return {
-      totalMembers,
-      totalTeamVolume,
-      leftVolume,
-      rightVolume,
-      accountCapacity,
-      usedCapacity,
-      flushOut,
-      vxc,
 
+      accountCapacity,
+   
       totalActiveInvestment,
       withdrawalTotalBalance,
     };
   }
 
-
-
-  // 🟢 محاسبه مجموع سرمایه‌گذاری‌ها در هر سطح
-  async getReferralEarnings(userId: string) {
-    this.logger.warn(`🚀 START getReferralEarnings | root=${userId}`);
-
-    const calculateSubtreeVolume = async (
-      parentId: string,
-      level = 1,
-    ): Promise<number> => {
-      this.logger.warn(
-        `\n🔁 [LEVEL ${level}] calculateSubtreeVolume(parent=${parentId})`,
-      );
-
-      let total = 0;
-
-      const referrals = await this.referralModel
-        .find({ parent: new Types.ObjectId(parentId) })
-        .select('referredUser')
-        .lean();
-
-      this.logger.warn(
-        `👶 [LEVEL ${level}] referrals found = ${referrals.length}`,
-      );
-
-      for (const r of referrals) {
-        const childId = r.referredUser.toString();
-
-        this.logger.warn(`➡️ [LEVEL ${level}] visiting child=${childId}`);
-
-        const investments =
-          await this.investmentsService.getUserInvestments(childId);
-
-        const activeSum = (investments || [])
-          .filter((i) => i.status === 'active')
-          .reduce((sum, i) => sum + Number(i.amount || 0), 0);
-
-        this.logger.warn(
-          `💰 [LEVEL ${level}] child=${childId} activeSum=${activeSum}`,
-        );
-
-        total += activeSum;
-
-        total += await calculateSubtreeVolume(childId, level + 1);
-      }
-
-      this.logger.warn(`✅ [LEVEL ${level}] subtotal=${total}`);
-
-      return total;
-    };
-
-    // 🔹 لول اول
-    const leftChild = await this.referralModel.findOne({
-      parent: new Types.ObjectId(userId),
-      position: 'left',
-    });
-
-    const rightChild = await this.referralModel.findOne({
-      parent: new Types.ObjectId(userId),
-      position: 'right',
-    });
-
-    this.logger.warn(
-      `🌿 root children → left=${leftChild?.referredUser} | right=${rightChild?.referredUser}`,
-    );
-
-    const leftVolume = leftChild
-      ? await calculateSubtreeVolume(leftChild.referredUser.toString())
-      : 0;
-
-    const rightVolume = rightChild
-      ? await calculateSubtreeVolume(rightChild.referredUser.toString())
-      : 0;
-
-    this.logger.warn(
-      `📊 FINAL volumes → LEFT=${leftVolume}, RIGHT=${rightVolume}`,
-    );
-
-    return {
-      leftVolume,
-      rightVolume,
-      weakerSide: Math.min(leftVolume, rightVolume),
-      strongerSide: Math.max(leftVolume, rightVolume),
-    };
-  }
 
   // 🌳 جزئیات نود برای نمایش درخت باینری
   // 🌳 جزئیات نود برای نمایش درخت باینری
@@ -458,6 +362,8 @@ async getReferralNodeDetails(userId: string, depth = Infinity) {
     const right = rightChild?.referredUser
       ? await buildTree(rightChild.referredUser._id.toString(), level + 1)
       : null;
+
+
 
     return {
       id: user._id.toString(),
