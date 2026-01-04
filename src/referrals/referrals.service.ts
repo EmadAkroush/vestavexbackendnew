@@ -148,46 +148,7 @@ export class ReferralsService {
   }
 
 
-  // 💰 افزودن سود ریفرال
-  async addReferralProfit(
-    referrerId: string,
-    amount: number,
-    fromUserId: string,
-  ) {
-    let currentUserId = fromUserId;
-    let level = 1;
 
-    while (true) {
-      const referral = await this.referralModel.findOne({
-        user: currentUserId,
-      });
-
-      if (!referral) break; // رسیدیم به ریشه درخت
-
-      const parentId = referral.parent.toString();
-
-      // 🔍 گرفتن کاربر والد
-      const parent = await this.usersService.findById(parentId);
-      if (!parent) break;
-
-      // 💾 ثبت سود در جدول referral
-      await this.referralModel.findOneAndUpdate(
-        { parent: parentId, user: currentUserId },
-        { $inc: { profitEarned: amount } },
-        { upsert: true },
-      );
-
-      // 💰 افزودن سود به کیف پول ریفرال
-      await this.usersService.addBalance(parentId, 'referralBalance', amount);
-
-      // 🔒 افزودن همان سود به maxCapBalance (برای قانون 3x برداشت)
-      await this.usersService.addBalance(parentId, 'maxCapBalance', amount);
-
-      // ⬆️ حرکت به uplink
-      currentUserId = parentId;
-      level++;
-    }
-  }
 
   // 📈 آمار کلی زیرمجموعه‌ها
   async getReferralDashboardStats(userId: string) {
@@ -402,9 +363,9 @@ async getReferralNodeDetails(userId: string, depth = Infinity) {
 }
 
 
-  async calculateReferralProfits(fromUserId: string, investmentAmount: number) {
+  async calculateReferralProfits(fromUserId: string) {
     this.logger.log(
-      `🔁 Binary profit calculation started from user=${fromUserId} amount=${investmentAmount}`,
+      `🔁 Binary profit calculation started from user=${fromUserId} `,
     );
 
     let currentUserId = fromUserId;
