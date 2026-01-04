@@ -13,17 +13,17 @@ import { CreateInvestmentDto } from './dto/create-investment.dto';
 import { User } from '../users/schemas/user.schema';
 import { Package } from '../packages/schemas/packages.schema';
 import { TransactionsService } from '../transactions/transactions.service';
-import { ReferralsService } from '../referrals/referrals.service'; // ✅ اضافه شد
+import { ReferralProfitsService } from '../referralprofits/referralprofits.service';
 @Injectable()
 export class InvestmentsService {
   private readonly logger = new Logger(InvestmentsService.name);
-
   constructor(
     @InjectModel(Investment.name) private investmentModel: Model<Investment>,
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Package.name) private packageModel: Model<Package>,
     @InjectConnection() private readonly connection: Connection, 
     private readonly transactionsService: TransactionsService,
+     private readonly referralProfitsService: ReferralProfitsService,
   ) {}
 
   // 🟢 ایجاد یا ارتقا سرمایه‌گذاری
@@ -82,7 +82,7 @@ export class InvestmentsService {
         note: 'Investment process started',
       });
 
-      await this.referralsService.calculateReferralProfits(user._id.toString());
+      await this.referralProfitsService.calculateReferralProfits(user._id.toString());
 
       if (investment) {
         investment.amount = Number(investment.amount) + depositAmount;
@@ -127,8 +127,8 @@ export class InvestmentsService {
           status: 'completed',
           note: `Upgraded investment to ${newPackage.name}`,
         });
-        
-        await this.referralsService.calculateReferralProfits(
+
+        await this.referralProfitsService.calculateReferralProfits(
           user._id.toString(),
         );
 

@@ -6,7 +6,7 @@ import { Investment, InvestmentSchema } from './schemas/investments.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { Package, PackageSchema } from '../packages/schemas/packages.schema';
 import { TransactionsModule } from '../transactions/transactions.module'; // 👈 اضافه شد
-
+import { ReferralProfitsModule } from '../referralprofits/referralprofits.module';
 
 @Module({
   imports: [
@@ -16,6 +16,7 @@ import { TransactionsModule } from '../transactions/transactions.module'; // �
       { name: Package.name, schema: PackageSchema },
       
     ]),
+      ReferralProfitsModule,
       TransactionsModule,
   ],
   controllers: [InvestmentsController],

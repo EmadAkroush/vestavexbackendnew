@@ -14,6 +14,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { ReferralProfitsModule } from './referralprofits/referral-profits.module';
 
 
 
@@ -33,6 +34,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     PaymentsModule,
     ScheduleModule.forRoot(),
     DashboardModule,
+    ReferralProfitsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
