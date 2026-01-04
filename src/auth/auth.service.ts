@@ -4,7 +4,7 @@ import {
   ConflictException,
   NotFoundException,
   BadRequestException,
-  Logger 
+  Logger,
 } from '@nestjs/common';
 import { Referral } from '../referrals/schemas/referrals.schema';
 import { JwtService } from '@nestjs/jwt';
@@ -19,7 +19,6 @@ import * as path from 'path';
 import * as fs from 'fs';
 import axios from 'axios'; // ✅ اضافه شد برای ارتباط با reCAPTCHA API
 
-
 @Injectable()
 export class AuthService {
   constructor(
@@ -27,7 +26,7 @@ export class AuthService {
     @InjectModel('Referral') private readonly referralModel: Model<Referral>,
     private jwtService: JwtService,
   ) {}
-private readonly logger = new Logger(AuthService.name);
+  private readonly logger = new Logger(AuthService.name);
   // ✅ متد جدید برای بررسی reCAPTCHA
   private async verifyRecaptcha(token: string) {
     const secret = process.env.RECAPTCHA_SECRET;
@@ -49,19 +48,25 @@ private readonly logger = new Logger(AuthService.name);
     }
   }
 
+     generateUsername = () => {
+      return (
+        'u' +
+         Date.now().toString(36) +
+         Math.random().toString(36).substring(2, 6)
+      );
+    };
+
   // === Register User ===
   async register(dto: any) {
-
-
     const existingUser = await this.userModel.findOne({ email: dto.email });
     if (existingUser) throw new ConflictException('Email already in use');
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const vxCode = 'vx-' + Math.floor(100000 + Math.random() * 900000);
     const verificationToken = randomBytes(32).toString('hex');
-
+    const username = this.generateUsername();
     const user = await this.userModel.create({
-      username: dto.username,
+      username,
       firstName: dto.firstName,
       lastName: dto.lastName,
       email: dto.email,
@@ -74,7 +79,9 @@ private readonly logger = new Logger(AuthService.name);
 
     // ✅ اگر referrerCode فرستاده شده باشد، بررسی و ثبت شود
     if (dto.referrerCode) {
-      const referrer = await this.userModel.findOne({ vxCode: dto.referrerCode });
+      const referrer = await this.userModel.findOne({
+        vxCode: dto.referrerCode,
+      });
       if (referrer) {
         // ثبت رابطه‌ی ارجاع
         user.referredBy = referrer.vxCode;
@@ -85,7 +92,9 @@ private readonly logger = new Logger(AuthService.name);
           referredUser: user._id,
         });
 
-        referrer.referrals.push(new mongoose.Types.ObjectId(user._id.toString()));
+        referrer.referrals.push(
+          new mongoose.Types.ObjectId(user._id.toString()),
+        );
         await referrer.save();
       } else {
         // ⚠️ اگر کد لیدر اشتباه بود — برای فرانت اند ارسال شود
@@ -103,7 +112,8 @@ private readonly logger = new Logger(AuthService.name);
     await this.updateRefreshToken(userId, tokens.refreshToken);
 
     return {
-      message: 'Registration successful. Please verify your email before login.',
+      message:
+        'Registration successful. Please verify your email before login.',
       user,
     };
   }
@@ -111,7 +121,8 @@ private readonly logger = new Logger(AuthService.name);
   // === Verify Email ===
   async verifyEmail(token: string) {
     const user = await this.userModel.findOne({ verificationToken: token });
-    if (!user) throw new NotFoundException('Invalid or expired verification token');
+    if (!user)
+      throw new NotFoundException('Invalid or expired verification token');
 
     user.set('isVerified', true);
     user.set('verificationToken', null);
@@ -121,41 +132,43 @@ private readonly logger = new Logger(AuthService.name);
   }
 
   // === Login User ===
-async login(email: string, password: string, recaptchaToken?: string) {
-  // 🧠 بررسی reCAPTCHA قبل از ورود
-  // if (!recaptchaToken)
-  //   throw new BadRequestException('Missing reCAPTCHA token');
-  // await this.verifyRecaptcha(recaptchaToken);
+  async login(email: string, password: string, recaptchaToken?: string) {
+    // 🧠 بررسی reCAPTCHA قبل از ورود
+    // if (!recaptchaToken)
+    //   throw new BadRequestException('Missing reCAPTCHA token');
+    // await this.verifyRecaptcha(recaptchaToken);
 
-  const user = await this.userModel.findOne({ email });
-  if (!user) throw new UnauthorizedException('Invalid credentials');
+    const user = await this.userModel.findOne({ email });
+    if (!user) throw new UnauthorizedException('Invalid credentials');
 
-  // ⛔️ جلوگیری از ورود کاربر بلاک‌شده
-  if (user.isActive === false)
-    throw new UnauthorizedException('Your account has been blocked.');
+    // ⛔️ جلوگیری از ورود کاربر بلاک‌شده
+    if (user.isActive === false)
+      throw new UnauthorizedException('Your account has been blocked.');
 
-  const isVerified = (user as any).isVerified;
-  if (!isVerified)
-    throw new UnauthorizedException('Please verify your email first.');
+    const isVerified = (user as any).isVerified;
+    if (!isVerified)
+      throw new UnauthorizedException('Please verify your email first.');
 
-  const valid = await bcrypt.compare(password, user.password);
-  if (!valid) throw new UnauthorizedException('Invalid credentials');
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) throw new UnauthorizedException('Invalid credentials');
 
-  const userId = user._id.toString();
-  const tokens = await this.generateTokens(userId, user.email);
-  await this.updateRefreshToken(userId, tokens.refreshToken);
+    const userId = user._id.toString();
+    const tokens = await this.generateTokens(userId, user.email);
+    await this.updateRefreshToken(userId, tokens.refreshToken);
 
-  return { user, ...tokens };
-}
-
+    return { user, ...tokens };
+  }
 
   // === Refresh Token ===
   async refresh(authHeader: string) {
     if (!authHeader || !authHeader.startsWith('Bearer '))
-      throw new UnauthorizedException('Missing or invalid Authorization header');
+      throw new UnauthorizedException(
+        'Missing or invalid Authorization header',
+      );
 
     const refreshToken = authHeader.split(' ')[1];
-    if (!refreshToken) throw new UnauthorizedException('Refresh token not found');
+    if (!refreshToken)
+      throw new UnauthorizedException('Refresh token not found');
 
     let decoded: any;
     try {
@@ -197,15 +210,16 @@ async login(email: string, password: string, recaptchaToken?: string) {
   // === Forgot Password (Send Reset Email) ===
   async requestPasswordReset(email: string) {
     const user = await this.userModel.findOne({ email });
-    if (!user) throw new NotFoundException('User with this email does not exist');
+    if (!user)
+      throw new NotFoundException('User with this email does not exist');
 
     const resetToken = randomBytes(32).toString('hex');
     const resetTokenExpires = new Date(Date.now() + 1000 * 60 * 30); // 30 دقیقه اعتبار
 
-  user.set('resetPasswordToken', resetToken);
-  user.set('resetPasswordExpires', resetTokenExpires);
-  await user.save();
-  this.logger.log(`Saved token: ${(user as any).resetPasswordToken}`);
+    user.set('resetPasswordToken', resetToken);
+    user.set('resetPasswordExpires', resetTokenExpires);
+    await user.save();
+    this.logger.log(`Saved token: ${(user as any).resetPasswordToken}`);
     await this.sendResetPasswordEmail(user.email, resetToken, user.firstName);
 
     return { message: 'Password reset email sent successfully' };
@@ -227,7 +241,7 @@ async login(email: string, password: string, recaptchaToken?: string) {
   }
 
   // === Reset Password ===
- async resetPassword(token: string, newPassword: string) {
+  async resetPassword(token: string, newPassword: string) {
     this.logger.log(`Reset password requested with token: ${token}`);
 
     try {
@@ -237,9 +251,7 @@ async login(email: string, password: string, recaptchaToken?: string) {
       });
 
       if (!user) {
-        this.logger.warn(
-          `Invalid or expired reset token: ${token}`,
-        );
+        this.logger.warn(`Invalid or expired reset token: ${token}`);
         throw new BadRequestException('Invalid or expired reset token');
       }
 
@@ -259,16 +271,11 @@ async login(email: string, password: string, recaptchaToken?: string) {
         message: 'Password reset successfully. You can now log in.',
       };
     } catch (error) {
-      this.logger.error(
-        `Reset password failed. token=${token}`,
-        error.stack,
-      );
+      this.logger.error(`Reset password failed. token=${token}`, error.stack);
 
       if (error instanceof BadRequestException) {
         throw error;
       }
-
-  
     }
   }
 
@@ -337,26 +344,26 @@ async login(email: string, password: string, recaptchaToken?: string) {
   }
 
   // === Send Password Reset Email ===
-private async sendResetPasswordEmail(
-  email: string,
-  token: string,
-  firstName?: string,
-) {
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.MAIL_USER,
-      pass: process.env.MAIL_PASS,
-    },
-  });
+  private async sendResetPasswordEmail(
+    email: string,
+    token: string,
+    firstName?: string,
+  ) {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
+      },
+    });
 
-  const resetUrl = `${process.env.FRONTEND_URL}/resetpassword?token=${token}`;
-  const name = firstName || 'User';
+    const resetUrl = `${process.env.FRONTEND_URL}/resetpassword?token=${token}`;
+    const name = firstName || 'User';
 
-  // ============================
-  // 🔥 HTML Template Inline (English)
-  // ============================
-  const html = `
+    // ============================
+    // 🔥 HTML Template Inline (English)
+    // ============================
+    const html = `
   <div style="font-family: Arial, sans-serif; direction: ltr; text-align: left; background:#f5f5f5; padding:40px;">
     <div style="max-width:600px; margin:auto; background:white; border-radius:12px; padding:30px; border:1px solid #eee;">
       
@@ -392,15 +399,13 @@ private async sendResetPasswordEmail(
   </div>
   `;
 
-  const mailOptions = {
-    from: `"finalxcard Support" <${process.env.MAIL_USER}>`,
-    to: email,
-    subject: 'Password Reset — finalxcard',
-    html,
-  };
+    const mailOptions = {
+      from: `"finalxcard Support" <${process.env.MAIL_USER}>`,
+      to: email,
+      subject: 'Password Reset — finalxcard',
+      html,
+    };
 
-  await transporter.sendMail(mailOptions);
-}
-
-
+    await transporter.sendMail(mailOptions);
+  }
 }

@@ -5,7 +5,7 @@ import * as mongoose from 'mongoose'; // 👈 این خط اضافه شده
 @Schema({ timestamps: true })
 export class User extends Document {
   // ===== Basic Profile =====
-  @Prop({ unique: true })
+  @Prop({ default: null })
   username: string;
 
   @Prop({ required: true })
@@ -46,11 +46,14 @@ export class User extends Document {
   @Prop({ type: Number, default: 0 })
   accountCapacity: number;
 
-    @Prop({  })
-  referredBy: string;
+   @Prop({ default: null })
+  referredBy?: string;
 
-    @Prop({ Array  })
-  referrals: any;
+  @Prop({
+    type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    default: [],
+  })
+  referrals: mongoose.Types.ObjectId[];
 
   // ===== Financial Balances =====
   @Prop({ type: Number, default: 0 })
