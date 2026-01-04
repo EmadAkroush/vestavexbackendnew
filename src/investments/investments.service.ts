@@ -3,7 +3,6 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
-
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
@@ -21,9 +20,9 @@ export class InvestmentsService {
     @InjectModel(Investment.name) private investmentModel: Model<Investment>,
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Package.name) private packageModel: Model<Package>,
-    @InjectConnection() private readonly connection: Connection, 
+    @InjectConnection() private readonly connection: Connection,
     private readonly transactionsService: TransactionsService,
-     private readonly referralProfitsService: ReferralProfitsService,
+    private readonly referralProfitsService: ReferralProfitsService,
   ) {}
 
   // 🟢 ایجاد یا ارتقا سرمایه‌گذاری
@@ -81,8 +80,6 @@ export class InvestmentsService {
         status: 'pending',
         note: 'Investment process started',
       });
-
-      await this.referralProfitsService.calculateReferralProfits(user._id.toString());
 
       if (investment) {
         investment.amount = Number(investment.amount) + depositAmount;
@@ -182,6 +179,11 @@ export class InvestmentsService {
           message: `Investment started successfully in ${finalPackage.name} package.`,
           investment: saved,
         };
+      }
+      if (!investment) {
+        await this.referralProfitsService.calculateReferralProfits(
+          user._id.toString(),
+        );
       }
     } catch (error) {
       if (dto?.user) {
