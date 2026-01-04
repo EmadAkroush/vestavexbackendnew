@@ -304,12 +304,12 @@ export class AuthService {
 
     const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
     const mailOptions = {
-      from: `"finalxcard Support" <${process.env.MAIL_USER}>`,
+      from: `"VXBUSINESS Support" <${process.env.MAIL_USER}>`,
       to: email,
-      subject: 'Your finalxcard Verification Code',
+      subject: 'Your VXBUSINESS Verification Code',
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #0b0f14; color: #e5fff7;">
-          <h2 style="color:#2ff1b4;">Welcome to finalxcard</h2>
+          <h2 style="color:#2ff1b4;">Welcome to VXBUSINESS</h2>
           <p style="font-size:15px;">Please use the verification code below to verify your email address.</p>
 
           <div style="margin:25px 0; text-align:center;">
@@ -329,7 +329,7 @@ export class AuthService {
           </div>
 
           <p style="font-size:14px;color:#9fc9b7;">
-            Copy the above code and paste it into the verification form in your finalxcard account.
+            Copy the above code and paste it into the verification form in your VXBUSINESS account.
           </p>
 
           <hr style="border:0;border-top:1px solid #2ff1b422;margin:25px 0;">
@@ -370,7 +370,7 @@ export class AuthService {
       <h2 style="color:#0b6d20;">Hello ${name} 🌿</h2>
 
       <p style="font-size:15px; color:#333;">
-        A password reset request has been submitted for your account at <strong>finalxcard</strong>.
+        A password reset request has been submitted for your account at <strong>VXBUSINESS</strong>.
       </p>
 
       <p style="font-size:15px; color:#333;">
@@ -391,7 +391,7 @@ export class AuthService {
       <hr style="margin:25px 0; border:0; border-top:1px solid #eee;" />
 
       <p style="font-size:12px; color:#999; text-align:center;">
-        finalxcard Support Team 🌱<br/>
+        VXBUSINESS Support Team 🌱<br/>
         This link is valid for 1 hour.
       </p>
 
@@ -400,9 +400,9 @@ export class AuthService {
   `;
 
     const mailOptions = {
-      from: `"finalxcard Support" <${process.env.MAIL_USER}>`,
+      from: `"VXBUSINESS Support" <${process.env.MAIL_USER}>`,
       to: email,
-      subject: 'Password Reset — finalxcard',
+      subject: 'Password Reset — VXBUSINESS',
       html,
     };
 
