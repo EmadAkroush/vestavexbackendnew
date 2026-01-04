@@ -147,17 +147,12 @@ export class ReferralsService {
     };
   }
 
-
-
-
   // 📈 آمار کلی زیرمجموعه‌ها
   async getReferralDashboardStats(userId: string) {
     this.logger.log(`📊 Fetching referral dashboard stats for ${userId}`);
 
     const user = await this.userModel.findById(userId).lean();
     if (!user) throw new NotFoundException('User not found');
-
-
 
     /* ============================
      📦 LEFT / RIGHT VOLUME
@@ -200,278 +195,292 @@ export class ReferralsService {
     const withdrawalTotalBalance = user.withdrawalTotalBalance || 0;
 
     return {
-
       accountCapacity,
-   
+
       totalActiveInvestment,
       withdrawalTotalBalance,
     };
   }
 
-
   // 🌳 جزئیات نود برای نمایش درخت باینری
   // 🌳 جزئیات نود برای نمایش درخت باینری
-async getReferralNodeDetails(userId: string, depth = Infinity) {
-  this.logger.warn(
-    `🌳 [START] Building binary referral tree for user=${userId}, depth=${depth}`,
-  );
-
-  /* =========================
-     🔢 CALCULATE SUBTREE VOLUME
-  ========================= */
-  const calculateSubtreeVolume = async (userId: string): Promise<number> => {
-    let total = 0;
-
-    const investments =
-      await this.investmentsService.getUserInvestments(userId);
-
-    const activeSum = (investments || [])
-      .filter((i: any) => i.status === 'active')
-      .reduce((sum: number, i: any) => sum + Number(i.amount || 0), 0);
-
-    total += activeSum;
-
-    const referrals = await this.referralModel
-      .find({ parent: new Types.ObjectId(userId) })
-      .select('referredUser')
-      .lean();
-
-    for (const r of referrals) {
-      total += await calculateSubtreeVolume(r.referredUser.toString());
-    }
-
-    return total;
-  };
-
-  /* =========================
-     🔢 CALCULATE SUBTREE COUNT
-  ========================= */
-  const calculateSubtreeCount = async (userId: string): Promise<number> => {
-    let count = 0;
-
-    const referrals = await this.referralModel
-      .find({ parent: new Types.ObjectId(userId) })
-      .select('referredUser')
-      .lean();
-
-    for (const r of referrals) {
-      count += 1;
-      count += await calculateSubtreeCount(r.referredUser.toString());
-    }
-
-    return count;
-  };
-
-  /* =========================
-     🌳 BUILD TREE
-  ========================= */
-  const buildTree = async (
-    parentId: string,
-    level = 1,
-  ): Promise<any | null> => {
+  async getReferralNodeDetails(userId: string, depth = Infinity) {
     this.logger.warn(
-      `\n🔁 [LEVEL ${level}] buildTree called with parentId=${parentId}`,
+      `🌳 [START] Building binary referral tree for user=${userId}, depth=${depth}`,
     );
 
-    if (level > depth) return null;
+    /* =========================
+     🔢 CALCULATE SUBTREE VOLUME
+  ========================= */
+    const calculateSubtreeVolume = async (userId: string): Promise<number> => {
+      let total = 0;
 
-    const user = await this.userModel
-      .findById(parentId)
-      .select(
-        '_id firstName lastName email vxCode activeVxCode mainBalance profitBalance referralBalance',
-      )
-      .lean();
+      const investments =
+        await this.investmentsService.getUserInvestments(userId);
 
-    if (!user) return null;
+      const activeSum = (investments || [])
+        .filter((i: any) => i.status === 'active')
+        .reduce((sum: number, i: any) => sum + Number(i.amount || 0), 0);
 
-    const children = await this.referralModel
-      .find({ parent: new Types.ObjectId(parentId) })
-      .select('position referredUser')
-      .populate(
-        'referredUser',
-        '_id firstName lastName email vxCode activeVxCode mainBalance profitBalance referralBalance',
-      )
-      .lean();
+      total += activeSum;
 
-    const leftChild = children.find((c) => c.position === 'left');
-    const rightChild = children.find((c) => c.position === 'right');
+      const referrals = await this.referralModel
+        .find({ parent: new Types.ObjectId(userId) })
+        .select('referredUser')
+        .lean();
 
-    const leftVolume = leftChild?.referredUser
-      ? await calculateSubtreeVolume(leftChild.referredUser._id.toString())
-      : 0;
+      for (const r of referrals) {
+        total += await calculateSubtreeVolume(r.referredUser.toString());
+      }
 
-    const rightVolume = rightChild?.referredUser
-      ? await calculateSubtreeVolume(rightChild.referredUser._id.toString())
-      : 0;
-
-    // ✅ FIXED COUNTS
-    const leftCount = leftChild?.referredUser
-      ? 1 + await calculateSubtreeCount(leftChild.referredUser._id.toString())
-      : 0;
-
-    const rightCount = rightChild?.referredUser
-      ? 1 + await calculateSubtreeCount(rightChild.referredUser._id.toString())
-      : 0;
-
-    const totalCount = leftCount + rightCount;
-    const totalTeamVolume = leftVolume + rightVolume;
-
-    const left = leftChild?.referredUser
-      ? await buildTree(leftChild.referredUser._id.toString(), level + 1)
-      : null;
-
-    const right = rightChild?.referredUser
-      ? await buildTree(rightChild.referredUser._id.toString(), level + 1)
-      : null;
-
-
-
-    return {
-      id: user._id.toString(),
-      name: `${user.firstName} ${user.lastName}`,
-      email: user.email,
-      vxCode: user.activeVxCode ? user.vxCode : null,
-
-      balances: {
-        main: user.mainBalance,
-        profit: user.profitBalance,
-        referral: user.referralBalance,
-      },
-
-      volumes: {
-        leftVolume,
-        rightVolume,
-        totalTeamVolume,
-      },
-
-      counts: {
-        leftCount,
-        rightCount,
-        totalCount,
-      },
-
-      left,
-      right,
+      return total;
     };
-  };
 
-  const tree = await buildTree(userId);
+    /* =========================
+     🔢 CALCULATE SUBTREE COUNT
+  ========================= */
+    const calculateSubtreeCount = async (userId: string): Promise<number> => {
+      let count = 0;
 
-  this.logger.warn(`🌳 [END] Tree build completed`);
+      const referrals = await this.referralModel
+        .find({ parent: new Types.ObjectId(userId) })
+        .select('referredUser')
+        .lean();
 
-  return tree;
-}
+      for (const r of referrals) {
+        count += 1;
+        count += await calculateSubtreeCount(r.referredUser.toString());
+      }
 
+      return count;
+    };
+
+    /* =========================
+     🌳 BUILD TREE
+  ========================= */
+    const buildTree = async (
+      parentId: string,
+      level = 1,
+    ): Promise<any | null> => {
+      this.logger.warn(
+        `\n🔁 [LEVEL ${level}] buildTree called with parentId=${parentId}`,
+      );
+
+      if (level > depth) return null;
+
+      const user = await this.userModel
+        .findById(parentId)
+        .select(
+          '_id firstName lastName email vxCode activeVxCode mainBalance profitBalance referralBalance',
+        )
+        .lean();
+
+      if (!user) return null;
+
+      const children = await this.referralModel
+        .find({ parent: new Types.ObjectId(parentId) })
+        .select('position referredUser')
+        .populate(
+          'referredUser',
+          '_id firstName lastName email vxCode activeVxCode mainBalance profitBalance referralBalance',
+        )
+        .lean();
+
+      const leftChild = children.find((c) => c.position === 'left');
+      const rightChild = children.find((c) => c.position === 'right');
+
+      const leftVolume = leftChild?.referredUser
+        ? await calculateSubtreeVolume(leftChild.referredUser._id.toString())
+        : 0;
+
+      const rightVolume = rightChild?.referredUser
+        ? await calculateSubtreeVolume(rightChild.referredUser._id.toString())
+        : 0;
+
+      // ✅ FIXED COUNTS
+      const leftCount = leftChild?.referredUser
+        ? 1 +
+          (await calculateSubtreeCount(leftChild.referredUser._id.toString()))
+        : 0;
+
+      const rightCount = rightChild?.referredUser
+        ? 1 +
+          (await calculateSubtreeCount(rightChild.referredUser._id.toString()))
+        : 0;
+
+      const totalCount = leftCount + rightCount;
+      const totalTeamVolume = leftVolume + rightVolume;
+
+      const left = leftChild?.referredUser
+        ? await buildTree(leftChild.referredUser._id.toString(), level + 1)
+        : null;
+
+      const right = rightChild?.referredUser
+        ? await buildTree(rightChild.referredUser._id.toString(), level + 1)
+        : null;
+
+      return {
+        id: user._id.toString(),
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        vxCode: user.activeVxCode ? user.vxCode : null,
+
+        balances: {
+          main: user.mainBalance,
+          profit: user.profitBalance,
+          referral: user.referralBalance,
+        },
+
+        volumes: {
+          leftVolume,
+          rightVolume,
+          totalTeamVolume,
+        },
+
+        counts: {
+          leftCount,
+          rightCount,
+          totalCount,
+        },
+
+        left,
+        right,
+      };
+    };
+
+    const tree = await buildTree(userId);
+
+    this.logger.warn(`🌳 [END] Tree build completed`);
+
+    return tree;
+  }
 
   async calculateReferralProfits(fromUserId: string) {
     this.logger.log(
-      `🔁 Binary profit calculation started from user=${fromUserId} `,
+      `🔁 Binary profit calculation started from user=${fromUserId}`,
     );
 
-    let currentUserId = fromUserId;
+    /**
+     * 🔁 محاسبه حجم کل یک زیرشاخه (بازگشتی)
+     */
+    const calculateSubtreeVolume = async (
+      userId: Types.ObjectId,
+    ): Promise<number> => {
+      let total = 0;
+
+      // 🔹 سرمایه‌گذاری فعال خود این کاربر
+      const investments = await this.investmentsService.getUserInvestments(
+        userId.toString(),
+      );
+
+      const totalActiveInvestment = (investments || [])
+        .filter((i) => i.status === 'active')
+        .reduce((sum, i) => sum + Number(i.amount || 0), 0);
+
+      total += investments.reduce(
+        (sum, inv) => sum + Number(inv.amount || 0),
+        0,
+      );
+
+      // 🔹 فرزندان مستقیم (left و right)
+      const children = await this.referralModel.find({
+        parent: userId,
+      });
+
+      for (const child of children) {
+        total += await calculateSubtreeVolume(
+          child.referredUser as Types.ObjectId,
+        );
+      }
+
+      return total;
+    };
+
+    let currentUserId = new Types.ObjectId(fromUserId);
     let level = 1;
 
     while (true) {
-      const referral = await this.referralModel.findOne({
-        user: currentUserId,
+      // ⬆️ پیدا کردن والد (uplink)
+      const uplink = await this.referralModel.findOne({
+        referredUser: currentUserId,
       });
 
-      if (!referral) {
+      if (!uplink || !uplink.parent) {
         this.logger.log(`🛑 Reached root at level ${level}`);
         break;
       }
 
-      const parentId = referral.parent.toString();
-      const position = referral.position;
+      const parentId = uplink.parent as Types.ObjectId;
 
       this.logger.log(
-        `⬆️ Level ${level} | child=${currentUserId} → parent=${parentId} | position=${position}`,
+        `⬆️ Level ${level} | child=${currentUserId} → parent=${parentId}`,
       );
 
-      /**
-       * 🔍 جمع سرمایه‌گذاری‌های هر دست
-       */
-      const leftUsers = await this.referralModel.find({
+      // 🔍 پیدا کردن فرزند چپ و راست والد
+      const children = await this.referralModel.find({
         parent: parentId,
-        position: 'left',
       });
 
-      const rightUsers = await this.referralModel.find({
-        parent: parentId,
-        position: 'right',
-      });
+      const leftChild = children.find((c) => c.position === 'left');
+      const rightChild = children.find((c) => c.position === 'right');
 
-      const leftTotal = await this.calculateTotalInvestment(leftUsers);
-      const rightTotal = await this.calculateTotalInvestment(rightUsers);
+      const leftVolume = leftChild
+        ? await calculateSubtreeVolume(leftChild.referredUser as Types.ObjectId)
+        : 0;
+
+      const rightVolume = rightChild
+        ? await calculateSubtreeVolume(
+            rightChild.referredUser as Types.ObjectId,
+          )
+        : 0;
 
       this.logger.log(
-        `📊 Level ${level} | Parent=${parentId} | Left=${leftTotal} | Right=${rightTotal}`,
+        `📊 Level ${level} | Parent=${parentId} | Left=${leftVolume} | Right=${rightVolume}`,
       );
 
-      const pairable = Math.min(leftTotal, rightTotal);
+      // 💰 محاسبه سود باینری
+      const pairable = Math.min(leftVolume, rightVolume);
       const pairs = Math.floor(pairable / 200);
       const reward = pairs * 35;
 
       if (reward > 0) {
-        this.logger.log(
-          `💰 Level ${level} | Parent=${parentId} earned=${reward}`,
+        await this.usersService.addBalance(
+          parentId.toString(),
+          'referralBalance',
+          reward,
         );
 
-        // 💰 افزودن سود
-        await this.usersService.addBalance(parentId, 'referralBalance', reward);
-
-        await this.usersService.addBalance(parentId, 'maxCapBalance', reward);
-
-        // 💾 ثبت در referral
-        await this.referralModel.findOneAndUpdate(
-          { parent: parentId, user: currentUserId },
-          { $inc: { profitEarned: reward } },
-          { upsert: true },
+        await this.usersService.addBalance(
+          parentId.toString(),
+          'maxCapBalance',
+          reward,
         );
 
-        // 🧾 ثبت تراکنش
         await this.transactionsService.createTransaction({
-          userId: parentId,
+          userId: parentId.toString(),
           type: 'binary-profit',
           amount: reward,
           currency: 'USD',
           status: 'completed',
-          note: `Binary profit | Level ${level} | Pairs=${pairs} | Left=${leftTotal} | Right=${rightTotal}`,
+          note: `Binary profit | Level ${level} | Pairs=${pairs} | Left=${leftVolume} | Right=${rightVolume}`,
         });
       } else {
-        // ❌ عدم دریافت سود
-        this.logger.warn(
-          `⚠️ Level ${level} | Parent=${parentId} NO PROFIT | Left=${leftTotal} | Right=${rightTotal}`,
-        );
-
         await this.transactionsService.createTransaction({
-          userId: parentId,
+          userId: parentId.toString(),
           type: 'binary-profit-skip',
           amount: 0,
           currency: 'USD',
           status: 'skipped',
-          note: `Binary not balanced | Level ${level} | Left=${leftTotal} | Right=${rightTotal}`,
+          note: `Binary not balanced | Level ${level} | Left=${leftVolume} | Right=${rightVolume}`,
         });
       }
 
+      // ⬆️ برو بالا
       currentUserId = parentId;
       level++;
     }
 
     this.logger.log('✅ Binary profit calculation completed');
-  }
-
-  async calculateTotalInvestment(referrals: any[]) {
-    let total = 0;
-
-    for (const ref of referrals) {
-      const user = await this.usersService.findById(ref.user.toString());
-      if (!user) continue;
-
-      total += user.mainBalance || 0;
-    }
-
-    return total;
   }
 
   // 🧾 گرفتن تراکنش‌های ریفرال کاربر برای داشبورد
