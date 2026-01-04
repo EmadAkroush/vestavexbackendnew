@@ -5,6 +5,7 @@ import { Referral, ReferralSchema } from '../referrals/schemas/referrals.schema'
 import { Investment, InvestmentSchema } from '../investments/schemas/investments.schema';
 import { UsersModule } from '../users/users.module';
 import { TransactionsModule } from '../transactions/transactions.module';
+import { InvestmentsModule } from '../investments/investments.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { TransactionsModule } from '../transactions/transactions.module';
 
     UsersModule,
     TransactionsModule,
+    InvestmentsModule,
   ],
   providers: [ReferralProfitsService],
   exports: [ReferralProfitsService], // ✅ خیلی مهم
