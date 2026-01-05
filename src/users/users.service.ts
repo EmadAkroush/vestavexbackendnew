@@ -1,5 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import * as bcrypt from 'bcrypt';
+
 import { Model } from 'mongoose';
 import { User } from './schemas/user.schema';
 
@@ -37,33 +43,36 @@ export class UsersService {
     return this.userModel.find().select('-password').exec();
   }
 
-async updateUser(userId: string, data: Partial<User>): Promise<User> {
-  if (!data || typeof data !== 'object') {
-    throw new Error('Invalid update data provided');
+  async updateUser(userId: string, data: Partial<User>): Promise<User> {
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid update data provided');
+    }
+
+    const cleanData = Object.fromEntries(
+      Object.entries(data).filter(([_, v]) => v !== undefined && v !== null),
+    );
+
+    const user = await this.userModel.findById(userId);
+    if (!user) throw new NotFoundException('User not found');
+
+    // فقط فیلدهایی که تغییر کرده‌اند را آپدیت کن
+    Object.assign(user, cleanData);
+
+    // ذخیره با ولیدیشن روی همان فیلدها
+    await user.save({ validateModifiedOnly: true });
+
+    return user;
   }
-
-  const cleanData = Object.fromEntries(
-    Object.entries(data).filter(([_, v]) => v !== undefined && v !== null)
-  );
-
-  const user = await this.userModel.findById(userId);
-  if (!user) throw new NotFoundException('User not found');
-
-  // فقط فیلدهایی که تغییر کرده‌اند را آپدیت کن
-  Object.assign(user, cleanData);
-
-  // ذخیره با ولیدیشن روی همان فیلدها
-  await user.save({ validateModifiedOnly: true });
-
-  return user;
-}
-
-
 
   // 💰 افزودن مبلغ به یکی از حساب‌ها
   async addBalance(
     userId: string,
-    type: 'mainBalance' | 'profitBalance' | 'referralBalance' | 'bonusBalance' | 'maxCapBalance',
+    type:
+      | 'mainBalance'
+      | 'profitBalance'
+      | 'referralBalance'
+      | 'bonusBalance'
+      | 'maxCapBalance',
     amount: number,
   ) {
     const user = await this.findById(userId);
@@ -92,5 +101,33 @@ async updateUser(userId: string, data: Partial<User>): Promise<User> {
       referralBalance: user.referralBalance ?? 0,
       bonusBalance: user.bonusBalance ?? 0,
     };
+  }
+
+  async updatePassword(
+    userId: string,
+    newPassword: string,
+    confirmPassword: string,
+  ): Promise<{ message: string }> {
+    if (!newPassword || !confirmPassword) {
+      throw new BadRequestException('Password is required');
+    }
+
+    if (newPassword !== confirmPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
+    if (newPassword.length < 6) {
+      throw new BadRequestException('Password must be at least 6 characters');
+    }
+
+    const user = await this.userModel.findById(userId);
+    if (!user) throw new NotFoundException('User not found');
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    user.password = hashed;
+
+    await user.save();
+
+    return { message: 'Password updated successfully' };
   }
 }

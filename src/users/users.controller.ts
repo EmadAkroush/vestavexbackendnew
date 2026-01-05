@@ -51,4 +51,16 @@ async update(@Body() body: any) {
   remove(@Body('id') id: string) {
     return this.usersService.deleteUser(id);
   }
+
+  @Post('updatepassword')
+async updatePassword(@Body() body) {
+  const { userId, newPassword, confirmPassword } = body;
+  return this.usersService.updatePassword(
+    userId,
+    newPassword,
+    confirmPassword,
+  );
+}
+
+
 }
