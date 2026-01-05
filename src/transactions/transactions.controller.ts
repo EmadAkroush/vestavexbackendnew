@@ -21,15 +21,15 @@ export class TransactionsController {
     return this.transactionsService.getAllTransactionsForAdmin();
   }
 
-
-    // 🔹 دریافت لیست تراکنش‌های کاربر
+  // 🔹 دریافت لیست تراکنش‌های کاربر
   @UseGuards(JwtAuthGuard)
   @Post('updatestatusadmin')
   async updateStatusAdmin(@Body() body) {
-   
-    return this.transactionsService.updateTransactionStatusAdmin(body.id, body.status);
+    return this.transactionsService.updateTransactionStatusAdmin(
+      body.id,
+      body.status,
+    );
   }
-
 
   // 🔹 دریافت لیست تراکنش‌های کاربر
   @UseGuards(JwtAuthGuard)
@@ -88,5 +88,17 @@ export class TransactionsController {
     }
 
     return this.transactionsService.requestWithdrawal(userId, body.amount);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('chart/profit')
+  async profitChart(@Body() body: { userId: string }) {
+    return this.transactionsService.getProfitChart(body.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('chart/vx')
+  async vxChart(@Body() body: { userId: string }) {
+    return this.transactionsService.getVXChart(body.userId);
   }
 }

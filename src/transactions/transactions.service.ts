@@ -154,4 +154,69 @@ async getUserTransactions(userId: string) {
     );
   }
 
+async getProfitChart(userId: string) {
+  return this.transactionModel.aggregate([
+    {
+      $match: {
+        userId: new mongoose.Types.ObjectId(userId),
+        type: 'profit',
+        status: 'completed',
+      },
+    },
+    {
+      $group: {
+        _id: { $month: '$createdAt' },
+        total: { $sum: '$amount' },
+      },
+    },
+    { $sort: { '_id': 1 } },
+    {
+      $project: {
+        _id: 0,
+        month: '$_id',
+        total: 1,
+      },
+    },
+  ]).then(rows => ({
+    labels: rows.map(r => this.monthName(r.month)),
+    data: rows.map(r => r.total),
+  }));
+}
+
+
+ monthName(m: number) {
+  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m - 1];
+}
+
+async getVXChart(userId: string) {
+  return this.transactionModel.aggregate([
+    {
+      $match: {
+        userId: new mongoose.Types.ObjectId(userId),
+        type: { $in: ['referral', 'binary-profit'] },
+        status: 'completed',
+      },
+    },
+    {
+      $group: {
+        _id: { $month: '$createdAt' },
+        total: { $sum: '$amount' },
+      },
+    },
+    { $sort: { '_id': 1 } },
+    {
+      $project: {
+        _id: 0,
+        month: '$_id',
+        total: 1,
+      },
+    },
+  ]).then(rows => ({
+    labels: rows.map(r => this.monthName(r.month)),
+    data: rows.map(r => r.total),
+  }));
+}
+
+  
+
 }
