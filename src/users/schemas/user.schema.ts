@@ -42,11 +42,10 @@ export class User extends Document {
   @Prop({ default: false })
   activeVxCode?: boolean;
 
-
   @Prop({ type: Number, default: 0 })
   accountCapacity: number;
 
-   @Prop({ default: null })
+  @Prop({ default: null })
   referredBy?: string;
 
   @Prop({
@@ -62,7 +61,6 @@ export class User extends Document {
   @Prop({ type: Number, default: 0 })
   maxCapBalance: number;
 
-
   @Prop({ type: Number, default: 0 })
   withdrawalTotalBalance: number;
 
@@ -71,8 +69,6 @@ export class User extends Document {
 
   @Prop({ type: Number, default: 0 })
   referralBalance: number;
-
-
 
   @Prop({ type: Number, default: 0 })
   bonusBalance: number;
@@ -83,6 +79,18 @@ export class User extends Document {
 
   @Prop({ type: Number, default: 0 })
   rightVolume: number;
+
+  @Prop({
+    type: {
+      left: { type: Number, default: 0 },
+      right: { type: Number, default: 0 },
+    },
+    default: { left: 0, right: 0 },
+  })
+  binaryMatched: {
+    left: number;
+    right: number;
+  };
 
   @Prop({ default: null })
   refreshToken?: string; // هش شده‌ی رفرش‌توکن فعلی کاربر
