@@ -46,7 +46,7 @@ export class InvestmentsController {
   // 🟠 اجرای دستی محاسبه سود روزانه
   @Post('calculate-profits')
   async calculateProfits() {
-    return this.investmentsService.calculateDailyProfits();
+    return this.investmentsService.calculateMonthlyProfits();
   }
 
 

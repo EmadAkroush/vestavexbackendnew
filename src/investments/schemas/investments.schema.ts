@@ -11,6 +11,9 @@ export class Investment extends Document {
   @Prop({ type: Types.ObjectId, ref: 'Package', required: true })
   package: Types.ObjectId;
 
+  @Prop({ type: Date, default: null })
+  lastProfitAt?: Date;
+
   // مبلغ سرمایه‌گذاری
   @Prop({ type: Number, required: true })
   amount: number;
@@ -28,7 +31,11 @@ export class Investment extends Document {
   withdrawn: number;
 
   // وضعیت سرمایه‌گذاری
-  @Prop({ type: String, enum: ['active', 'completed', 'canceled'], default: 'active' })
+  @Prop({
+    type: String,
+    enum: ['active', 'completed', 'canceled'],
+    default: 'active',
+  })
   status: string;
 
   // تاریخ شروع و پایان
@@ -37,8 +44,6 @@ export class Investment extends Document {
 
   @Prop({ type: Date })
   endDate?: Date;
-
-
 
   // توضیحات
   @Prop({ type: String, default: '' })
