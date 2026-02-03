@@ -6,41 +6,42 @@ export class Payment extends Document {
   @Prop({ required: true })
   userId: string;
 
-  @Prop()
+  // مبلغ درخواستی سایت (USD)
+  @Prop({ required: true })
   amount: number;
 
+  // مبلغ واقعی پرداخت‌شده (USDT)
   @Prop()
-  actualAmount: number;
+  actualAmount?: number;
 
-  @Prop({ default: 'TRX' })
+  @Prop({ default: 'USD' })
   currency: string;
 
-
-
-  @Prop({ required: true })
+  // شناسه داخلی پرداخت
+  @Prop({ required: true, unique: true })
   paymentId: string;
 
-  @Prop({ default: 'waiting' })
-  status: string;
+  @Prop({ default: 'pending' })
+  status: 'pending' | 'finished' | 'failed';
 
-  @Prop()
-  payAddress?: string;
+  // آدرس دریافت‌کننده (کیف پول بیزینس)
+  @Prop({ required: true })
+  payAddress: string;
 
-  
-  @Prop()
-  payCurrency?: string;
+  // USDT
+  @Prop({ default: 'USDT' })
+  payCurrency: string;
 
+  // آدرس کیف پول کاربر
   @Prop()
-  payAmount?: number;
+  fromAddress?: string;
 
-  @Prop()
-  statusUrl?: string;
+  // هش تراکنش بلاک‌چین
+  @Prop({ unique: true, sparse: true })
+  txHash?: string;
 
   @Prop()
   confirmedAt?: Date;
-
-  @Prop()
-  txHash?: string;
 }
 
 export const PaymentSchema = SchemaFactory.createForClass(Payment);
