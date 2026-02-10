@@ -3,8 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Transaction } from './schemas/transactions.schema';
 import { User } from '../users/schemas/user.schema';
-import mongoose from "mongoose";
-
+import mongoose from 'mongoose';
 
 @Injectable()
 export class TransactionsService {
@@ -13,16 +12,14 @@ export class TransactionsService {
     @InjectModel(User.name) private userModel: Model<User>,
   ) {}
 
-
   // 🔥 دریافت لیست کامل تراکنش‌ها برای سوپر ادمین (بدون فیلتر + بدون پیجینیشن)
-async getAllTransactionsForAdmin() {
-  return await this.transactionModel
-    .find()
-    .populate({ path: 'userId', select: 'email wallet' })  // فقط فیلدهای مهم یوزر
-    .sort({ createdAt: -1 }) // مرتب‌سازی بر اساس جدیدترین تراکنش
-    .lean();
-}
-
+  async getAllTransactionsForAdmin() {
+    return await this.transactionModel
+      .find()
+      .populate({ path: 'userId', select: 'email wallet' }) // فقط فیلدهای مهم یوزر
+      .sort({ createdAt: -1 }) // مرتب‌سازی بر اساس جدیدترین تراکنش
+      .lean();
+  }
 
   // 🔹 ایجاد تراکنش جدید
   async createTransaction(data: {
@@ -46,20 +43,21 @@ async getAllTransactionsForAdmin() {
 
   // 🔹 دریافت سرمایه‌گذاری‌های کاربر
   async getUserInvestments(userId: string) {
-    return await this.transactionModel.find({
-      userId,
-      type: 'investment'
-    }).sort({ createdAt: -1 }).lean();
+    return await this.transactionModel
+      .find({
+        userId,
+        type: 'investment',
+      })
+      .sort({ createdAt: -1 })
+      .lean();
   }
 
-
-
-
-
-
-
   // 🔹 آپدیت وضعیت تراکنش بر اساس paymentId
-  async updateTransactionStatus(paymentId: string, status: string, txHash?: string) {
+  async updateTransactionStatus(
+    paymentId: string,
+    status: string,
+    txHash?: string,
+  ) {
     return await this.transactionModel.findOneAndUpdate(
       { paymentId },
       { status, txHash },
@@ -67,44 +65,44 @@ async getAllTransactionsForAdmin() {
     );
   }
   // 🔹 لیست تراکنش‌های کاربر (با لاگ برای دیباگ)
-async getUserTransactions(userId: string) {
-  console.log(`[TransactionsService] getUserTransactions called with userId=${userId}`);
+  async getUserTransactions(userId: string) {
+    console.log(
+      `[TransactionsService] getUserTransactions called with userId=${userId}`,
+    );
 
-  try {
-    const objectId = new mongoose.Types.ObjectId(userId);
+    try {
+      const objectId = new mongoose.Types.ObjectId(userId);
 
-    const filter = {
-      $or: [
-        { userId: objectId },  // رکوردهای جدید
-        { userId: userId },    // رکوردهای قدیمی که string هستند
-        { userId: { $eq: objectId } }, // رکوردهایی که به صورت ObjectId هستند
-        { userId: { $eq: userId } }     // رکوردهایی که به صورت string هستند
-      ]
-    };
+      const filter = {
+        $or: [
+          { userId: objectId }, // رکوردهای جدید
+          { userId: userId }, // رکوردهای قدیمی که string هستند
+          { userId: { $eq: objectId } }, // رکوردهایی که به صورت ObjectId هستند
+          { userId: { $eq: userId } }, // رکوردهایی که به صورت string هستند
+        ],
+      };
 
-    console.log('[TransactionsService] final filter:', filter);
+      console.log('[TransactionsService] final filter:', filter);
 
-    const txs = await this.transactionModel
-      .find(filter)
-      .sort({ createdAt: -1 })
-      .lean();
+      const txs = await this.transactionModel
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .lean();
 
-    console.log(`[TransactionsService] found ${txs.length} transactions`);
-    return txs;
-
-  } catch (error) {
-    console.error('[TransactionsService] getUserTransactions error:', error);
-    throw error;
+      console.log(`[TransactionsService] found ${txs.length} transactions`);
+      return txs;
+    } catch (error) {
+      console.error('[TransactionsService] getUserTransactions error:', error);
+      throw error;
+    }
   }
-}
-
 
   // 🔹 گرفتن جزئیات تراکنش خاص
   async getTransactionById(id: string) {
     return await this.transactionModel.findById(id);
   }
 
-  // 🟥 برداشت از حساب (با 10٪ کارمزد)
+  // 🟥 برداشت از حساب (با 5٪ کارمزد)
   async requestWithdrawal(userId: string, amount: number) {
     if (amount <= 0) {
       throw new BadRequestException('Invalid withdrawal amount');
@@ -119,12 +117,25 @@ async getUserTransactions(userId: string) {
       throw new BadRequestException('Insufficient balance');
     }
 
-    // 💰 کم کردن از حساب کاربر
+    // 🚫 بررسی سقف مجاز برداشت (Max Cap)
+    const newTotalWithdrawal = user.withdrawalTotalBalance + amount;
+
+    if (newTotalWithdrawal > user.maxCapBalance) {
+      throw new BadRequestException(
+        'Withdrawal amount exceeds maximum allowed withdrawal capacity',
+      );
+    }
+
+    // 💰 کم کردن مبلغ از موجودی اصلی
     user.mainBalance -= amount;
+
+    // 📊 ثبت مجموع برداشت‌ها
+    user.withdrawalTotalBalance = newTotalWithdrawal;
+
     await user.save();
 
-    // محاسبه مبلغ خالص دریافتی بعد از کارمزد
-    const netAmount = amount * 0.9;
+    // 💸 محاسبه مبلغ خالص بعد از 5٪ کارمزد
+    const netAmount = amount * 0.95;
 
     // 📘 ثبت تراکنش برداشت
     const tx = new this.transactionModel({
@@ -132,21 +143,23 @@ async getUserTransactions(userId: string) {
       type: 'withdraw',
       amount,
       currency: 'USD',
-      status: 'pending', // مدیر بعداً تأیید می‌کند
-      note: `Withdrawal request submitted. User will receive ${netAmount.toFixed(2)} USD after 10% fee.`,
+      status: 'pending',
+      note: `Withdrawal request submitted. User will receive ${netAmount.toFixed(
+        2,
+      )} USD after 5% fee.`,
     });
 
     return await tx.save();
   }
 
   async findByTypeAndDate(type: string, since: Date) {
-  return await this.transactionModel.find({
-    type,
-    createdAt: { $gte: since },
-  });
-}
+    return await this.transactionModel.find({
+      type,
+      createdAt: { $gte: since },
+    });
+  }
 
- async updateTransactionStatusAdmin(id: string, status: string) {
+  async updateTransactionStatusAdmin(id: string, status: string) {
     return await this.transactionModel.findByIdAndUpdate(
       id,
       { status },
@@ -154,69 +167,82 @@ async getUserTransactions(userId: string) {
     );
   }
 
-async getProfitChart(userId: string) {
-  return this.transactionModel.aggregate([
-    {
-      $match: {
-        userId: new mongoose.Types.ObjectId(userId),
-        type: 'profit',
-        status: 'completed',
-      },
-    },
-    {
-      $group: {
-        _id: { $month: '$createdAt' },
-        total: { $sum: '$amount' },
-      },
-    },
-    { $sort: { '_id': 1 } },
-    {
-      $project: {
-        _id: 0,
-        month: '$_id',
-        total: 1,
-      },
-    },
-  ]).then(rows => ({
-    labels: rows.map(r => this.monthName(r.month)),
-    data: rows.map(r => r.total),
-  }));
-}
+  async getProfitChart(userId: string) {
+    return this.transactionModel
+      .aggregate([
+        {
+          $match: {
+            userId: new mongoose.Types.ObjectId(userId),
+            type: 'profit',
+            status: 'completed',
+          },
+        },
+        {
+          $group: {
+            _id: { $month: '$createdAt' },
+            total: { $sum: '$amount' },
+          },
+        },
+        { $sort: { _id: 1 } },
+        {
+          $project: {
+            _id: 0,
+            month: '$_id',
+            total: 1,
+          },
+        },
+      ])
+      .then((rows) => ({
+        labels: rows.map((r) => this.monthName(r.month)),
+        data: rows.map((r) => r.total),
+      }));
+  }
 
+  monthName(m: number) {
+    return [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ][m - 1];
+  }
 
- monthName(m: number) {
-  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m - 1];
-}
-
-async getVXChart(userId: string) {
-  return this.transactionModel.aggregate([
-    {
-      $match: {
-        userId: new mongoose.Types.ObjectId(userId),
-        type: { $in: ['referral', 'binary-profit'] },
-        status: 'completed',
-      },
-    },
-    {
-      $group: {
-        _id: { $month: '$createdAt' },
-        total: { $sum: '$amount' },
-      },
-    },
-    { $sort: { '_id': 1 } },
-    {
-      $project: {
-        _id: 0,
-        month: '$_id',
-        total: 1,
-      },
-    },
-  ]).then(rows => ({
-    labels: rows.map(r => this.monthName(r.month)),
-    data: rows.map(r => r.total),
-  }));
-}
-
-  
-
+  async getVXChart(userId: string) {
+    return this.transactionModel
+      .aggregate([
+        {
+          $match: {
+            userId: new mongoose.Types.ObjectId(userId),
+            type: { $in: ['referral', 'binary-profit'] },
+            status: 'completed',
+          },
+        },
+        {
+          $group: {
+            _id: { $month: '$createdAt' },
+            total: { $sum: '$amount' },
+          },
+        },
+        { $sort: { _id: 1 } },
+        {
+          $project: {
+            _id: 0,
+            month: '$_id',
+            total: 1,
+          },
+        },
+      ])
+      .then((rows) => ({
+        labels: rows.map((r) => this.monthName(r.month)),
+        data: rows.map((r) => r.total),
+      }));
+  }
 }

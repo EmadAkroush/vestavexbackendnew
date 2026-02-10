@@ -33,13 +33,12 @@ export class UsersController {
   findOne(@Body('id') userId: string) {
     return this.usersService.findById(userId);
   }
-@Post('update')
-async update(@Body() body: any) {
-  const { userId, ...updateData } = body;
+  @Post('update')
+  async update(@Body() body: any) {
+    const { userId, ...updateData } = body;
 
-
-  return this.usersService.updateUser(userId, updateData);
-}
+    return this.usersService.updateUser(userId, updateData);
+  }
   // 🟢 دریافت موجودی حساب‌های کاربر
   @Post('balances')
   async getUserBalances(@Body('userId') userId: string) {
@@ -53,14 +52,12 @@ async update(@Body() body: any) {
   }
 
   @Post('updatepassword')
-async updatePassword(@Body() body) {
-  const { userId, newPassword, confirmPassword } = body;
-  return this.usersService.updatePassword(
-    userId,
-    newPassword,
-    confirmPassword,
-  );
-}
-
-
+  async updatePassword(@Body() body) {
+    const { userId, newPassword, confirmPassword } = body;
+    return this.usersService.updatePassword(
+      userId,
+      newPassword,
+      confirmPassword,
+    );
+  }
 }
