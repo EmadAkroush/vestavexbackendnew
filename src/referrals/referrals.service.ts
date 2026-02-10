@@ -196,7 +196,6 @@ export class ReferralsService {
 
     return {
       accountCapacity,
-
       totalActiveInvestment,
       withdrawalTotalBalance,
     };

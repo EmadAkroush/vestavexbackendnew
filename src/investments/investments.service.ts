@@ -252,7 +252,6 @@ async calculateMonthlyProfits() {
     await this.userModel.findByIdAndUpdate(inv.user._id, {
       $inc: {
         profitBalance: profit,
-        maxCapBalance: profit,
       },
     });
 

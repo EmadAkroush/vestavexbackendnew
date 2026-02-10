@@ -142,11 +142,7 @@ async calculateReferralProfits(fromUserId: string) {
         reward,
       );
 
-      await this.usersService.addBalance(
-        parentId.toString(),
-        'maxCapBalance',
-        reward,
-      );
+ 
 
       await this.transactionsService.createTransaction({
         userId: parentId.toString(),
