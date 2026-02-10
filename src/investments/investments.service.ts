@@ -117,6 +117,11 @@ export class InvestmentsService {
 
         await investment.save();
 
+        // ✅ اضافه شدن maxCapBalance (upgrade)
+        await this.userModel.findByIdAndUpdate(user._id, {
+          $inc: { maxCapBalance: depositAmount * 3 },
+        });
+
         await this.transactionsService.createTransaction({
           userId: user._id.toString(),
           type: 'investment-upgrade',
@@ -169,6 +174,11 @@ export class InvestmentsService {
 
         const saved = await investment.save();
 
+        // ✅ اضافه شدن maxCapBalance (investment جدید)
+        await this.userModel.findByIdAndUpdate(user._id, {
+          $inc: { maxCapBalance: depositAmount * 3 },
+        });
+
         await this.transactionsService.createTransaction({
           userId: user._id.toString(),
           type: 'investment',
@@ -220,59 +230,58 @@ export class InvestmentsService {
 
   // 🟠 محاسبه سود روزانه (تابع عمومی برای CronJob)
   // 🟠 محاسبه سود روزانه (تابع عمومی برای CronJob)
-async calculateMonthlyProfits() {
-  const now = new Date();
+  async calculateMonthlyProfits() {
+    const now = new Date();
 
-  const investments = await this.investmentModel
-    .find({ status: 'active' })
-    .populate<{ user: User }>('user')
-    .populate<{ package: Package }>('package');
+    const investments = await this.investmentModel
+      .find({ status: 'active' })
+      .populate<{ user: User }>('user')
+      .populate<{ package: Package }>('package');
 
-  for (const inv of investments) {
-    // 🔁 مبنای محاسبه: آخرین سود یا تاریخ شروع
-    const baseDate = inv.lastProfitAt ?? inv.startDate;
+    for (const inv of investments) {
+      // 🔁 مبنای محاسبه: آخرین سود یا تاریخ شروع
+      const baseDate = inv.lastProfitAt ?? inv.startDate;
 
-    const daysPassed =
-      (now.getTime() - baseDate.getTime()) / (1000 * 60 * 60 * 24);
+      const daysPassed =
+        (now.getTime() - baseDate.getTime()) / (1000 * 60 * 60 * 24);
 
-    // ❌ هنوز ۳۰ روز نشده
-    if (daysPassed < 30) continue;
+      // ❌ هنوز ۳۰ روز نشده
+      if (daysPassed < 30) continue;
 
-    // ✅ محاسبه سود ماهانه
-    const profit = (inv.amount * inv.monthRate) / 100;
+      // ✅ محاسبه سود ماهانه
+      const profit = (inv.amount * inv.monthRate) / 100;
 
-    // ✅ سود مرکب (اختیاری)
-    inv.totalProfit += profit;
-    // inv.amount += profit; // اگر خواستی مرکب باشه
+      // ✅ سود مرکب (اختیاری)
+      inv.totalProfit += profit;
+      // inv.amount += profit; // اگر خواستی مرکب باشه
 
-    inv.lastProfitAt = now;
-    await inv.save();
+      inv.lastProfitAt = now;
+      await inv.save();
 
-    // ➕ افزودن سود به کیف پول کاربر
-    await this.userModel.findByIdAndUpdate(inv.user._id, {
-      $inc: {
-        profitBalance: profit,
-      },
-    });
+      // ➕ افزودن سود به کیف پول کاربر
+      await this.userModel.findByIdAndUpdate(inv.user._id, {
+        $inc: {
+          profitBalance: profit,
+        },
+      });
 
-    // 🧾 ثبت تراکنش
-    await this.transactionsService.createTransaction({
-      userId: inv.user._id.toString(),
-      type: 'profit',
-      amount: profit,
-      currency: 'USD',
-      status: 'completed',
-      note: `Monthly profit (${inv.monthRate}% of ${inv.amount}) for ${inv.package.name}`,
-    });
+      // 🧾 ثبت تراکنش
+      await this.transactionsService.createTransaction({
+        userId: inv.user._id.toString(),
+        type: 'profit',
+        amount: profit,
+        currency: 'USD',
+        status: 'completed',
+        note: `Monthly profit (${inv.monthRate}% of ${inv.amount}) for ${inv.package.name}`,
+      });
 
-    this.logger.log(
-      `💰 Monthly profit ${profit.toFixed(2)} USD added for ${inv.user.email} (${inv.package.name})`,
-    );
+      this.logger.log(
+        `💰 Monthly profit ${profit.toFixed(2)} USD added for ${inv.user.email} (${inv.package.name})`,
+      );
+    }
+
+    this.logger.log('✅ Monthly profit calculation finished');
   }
-
-  this.logger.log('✅ Monthly profit calculation finished');
-}
-
 
   // // 🕒 کرون جاب خودکار
   // @Cron(CronExpression.EVERY_DAY_AT_1AM)
