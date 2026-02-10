@@ -15,7 +15,7 @@ export class PaymentsService {
   // ---------------- Blockchain Config ----------------
   private readonly BNB_CHAIN_ID = 56;
   private readonly USDT_ADDRESS = '0x55d398326f99059fF775485246999027B3197955';
-  private readonly RECEIVER = '0x9Ff230b49C3dEFF7fE59AfE387eDF3128cf03fe6';
+  private readonly RECEIVER = '0x1f6eaDD43431A9A7F76Ecb7D4A385293Cc7aFf04';
 
   private readonly ERC20_ABI = [
     'function transfer(address to, uint amount)',
