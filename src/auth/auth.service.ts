@@ -138,7 +138,9 @@ export class AuthService {
     //   throw new BadRequestException('Missing reCAPTCHA token');
     // await this.verifyRecaptcha(recaptchaToken);
 
-    const user = await this.userModel.findOne({ email });
+    const user = await this.userModel.findOne({
+      $or: [{ email }, { vxCode: email }],
+    });
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
     // ⛔️ جلوگیری از ورود کاربر بلاک‌شده

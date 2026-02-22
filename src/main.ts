@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-(global as any).crypto = { randomUUID };
+// (global as any).crypto = { randomUUID };
 
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
