@@ -64,9 +64,7 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const vxCode = 'vx-' + Math.floor(100000 + Math.random() * 900000);
     const verificationToken = randomBytes(32).toString('hex');
-    const username = this.generateUsername();
     const user = await this.userModel.create({
-      username,
       firstName: dto.firstName,
       lastName: dto.lastName,
       email: dto.email,
