@@ -134,6 +134,7 @@ async calculateReferralProfits(fromUserId: string) {
       // ⬅️ ثبت حجم مصرف‌شده
       parentUser.binaryMatched.left += usedVolume;
       parentUser.binaryMatched.right += usedVolume;
+      parentUser.vxCycle += pairs;
       await parentUser.save();
 
       await this.usersService.addBalance(
@@ -150,7 +151,7 @@ async calculateReferralProfits(fromUserId: string) {
         amount: reward,
         currency: 'USD',
         status: 'completed',
-        note: `Binary profit | Level ${level} | Pairs=${pairs} | Used=${usedVolume} | Left=${leftVolume} | Right=${rightVolume}`,
+        note: `Binary profit | Level ${level} | Pairs=${pairs} | vxCycle=${parentUser.vxCycle} | Used=${usedVolume} | Left=${leftVolume} | Right=${rightVolume}`,
       });
     } else {
       await this.transactionsService.createTransaction({

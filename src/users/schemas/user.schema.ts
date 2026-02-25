@@ -6,7 +6,6 @@ import * as mongoose from 'mongoose'; // 👈 این خط اضافه شده
 export class User extends Document {
   // ===== Basic Profile =====
 
-
   @Prop({ required: true })
   firstName: string;
 
@@ -43,6 +42,9 @@ export class User extends Document {
 
   @Prop({ type: Number, default: 0 })
   accountCapacity: number;
+
+  @Prop({ type: Number, default: 0 })
+  vxCycle: number;
 
   @Prop({ default: null })
   referredBy?: string;
