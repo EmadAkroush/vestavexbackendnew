@@ -59,11 +59,31 @@ export class AuthService {
   // === Register User ===
   async register(dto: any) {
     const existingUser = await this.userModel.findOne({ email: dto.email });
-    if (existingUser) throw new ConflictException('Email already in use');
+    if (existingUser) {
+      throw new ConflictException('Email already in use');
+    }
 
+    // ✅ اگر کد رفرال وارد شده → قبل از ساخت کاربر validate کن
+    let parent = null;
+
+    if (dto.referrerCode) {
+      const referralValidation = await this.referralsService.validateReferral(
+        dto.referrerCode,
+      );
+
+      if (!referralValidation.success) {
+        // ❌ جلوی ثبت نام گرفته میشه
+        throw new BadRequestException(referralValidation.message);
+      }
+
+      parent = referralValidation.parent;
+    }
+
+    // ✅ حالا کاربر ساخته میشه چون همه چیز اوکیه
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const vxCode = 'vx-' + Math.floor(100000 + Math.random() * 900000);
     const verificationToken = randomBytes(32).toString('hex');
+
     const user = await this.userModel.create({
       firstName: dto.firstName,
       lastName: dto.lastName,
@@ -75,16 +95,12 @@ export class AuthService {
       verificationToken,
     });
 
-    // ✅ Register referral if referrerCode is provided
-    if (dto.referrerCode) {
-      const referralResult = await this.referralsService.registerReferral(
+    // ✅ اگر رفرال داشت → حالا ثبتش کن
+    if (parent) {
+      await this.referralsService.registerReferral(
         dto.referrerCode,
         user._id.toString(),
       );
-
-      if (!referralResult.success) {
-        return referralResult;
-      }
     }
 
     await this.sendVerificationEmail(user.email, verificationToken);

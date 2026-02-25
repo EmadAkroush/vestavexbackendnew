@@ -103,6 +103,40 @@ export class ReferralsService {
     };
   }
 
+
+  async validateReferral(referrerCode: string) {
+  const parent = await this.usersService.findByVxCode(referrerCode);
+
+  if (!parent) {
+    return {
+      success: false,
+      message: 'Invalid referral code.',
+    };
+  }
+
+  const leftExists = await this.referralModel.exists({
+    parent: parent._id,
+    position: 'left',
+  });
+
+  const rightExists = await this.referralModel.exists({
+    parent: parent._id,
+    position: 'right',
+  });
+
+  if (leftExists && rightExists) {
+    return {
+      success: false,
+      message: 'Both left and right positions are already occupied.',
+    };
+  }
+
+  return {
+    success: true,
+    parent,
+  };
+}
+
   async activateVxCode(userId: string) {
     const VX_CODE_PRICE = 5;
 
