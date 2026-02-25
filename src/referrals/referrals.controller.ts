@@ -22,7 +22,7 @@ export class ReferralsController {
     @Body('newUserId') newUserId: string,
     @Body('position') position: 'left' | 'right',
   ) {
-    return this.referralsService.registerReferral(referrerCode  , newUserId , position  );
+    return this.referralsService.registerReferral(referrerCode  , newUserId   );
   }
 
 
