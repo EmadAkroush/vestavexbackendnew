@@ -34,10 +34,6 @@ export class ReferralsController {
 
 
   // 📈 آمار کلی
-  @Post('stats')
-  async getReferralStats(@Body() body: { userId: string }) {
-    return this.referralsService.getReferralDashboardStats(body.userId);
-  }
 
 
 

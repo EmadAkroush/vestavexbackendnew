@@ -147,59 +147,6 @@ export class ReferralsService {
     };
   }
 
-  // 📈 آمار کلی زیرمجموعه‌ها
-  async getReferralDashboardStats(userId: string) {
-    this.logger.log(`📊 Fetching referral dashboard stats for ${userId}`);
-
-    const user = await this.userModel.findById(userId).lean();
-    if (!user) throw new NotFoundException('User not found');
-
-    /* ============================
-     📦 LEFT / RIGHT VOLUME
-  ============================ */
-    // const { leftVolume, rightVolume } = await this.getReferralEarnings(userId);
-
-    // const totalTeamVolume = leftVolume + rightVolume;
-
-    /* ============================
-     💼 USER INVESTMENTS
-  ============================ */
-    const investments =
-      await this.investmentsService.getUserInvestments(userId);
-
-    const totalActiveInvestment = (investments || [])
-      .filter((i) => i.status === 'active')
-      .reduce((sum, i) => sum + Number(i.amount || 0), 0);
-
-    /* ============================
-     ⚖️ ACCOUNT CAPACITY (3x)
-  ============================ */
-    const accountCapacity = totalActiveInvestment * 3;
-
-    /* ============================
-     🔁 USED / FLUSH
-  ============================ */
-    // const usedCapacity = Math.min(leftVolume, rightVolume);
-
-    // const flushOut =
-    //   leftVolume !== rightVolume ? Math.abs(leftVolume - rightVolume) : 0;
-
-    /* ============================
-     🔄 CYCLES
-  ============================ */
-    // const vxc = Math.floor(usedCapacity / 200);
-
-    /* ============================
-     💸 WITHDRAWALS (READ ONLY)
-  ============================ */
-    const withdrawalTotalBalance = user.withdrawalTotalBalance || 0;
-
-    return {
-      accountCapacity,
-      totalActiveInvestment,
-      withdrawalTotalBalance,
-    };
-  }
 
   // 🌳 جزئیات نود برای نمایش درخت باینری
   // 🌳 جزئیات نود برای نمایش درخت باینری
