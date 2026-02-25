@@ -26,7 +26,6 @@ export class ReferralsService {
   async registerReferral(
     referrerCode: string,
     newUserId: string,
-    position: 'left' | 'right',
   ) {
     // 🔍 کاربر جدید
     const newUser = await this.usersService.findById(newUserId);
@@ -56,7 +55,6 @@ export class ReferralsService {
     }
 
     // ❌ جلوگیری از self-referral
-    // compare string representations to avoid using unknown typed ObjectId.equals
     if (String(parent._id) === String(newUser._id)) {
       return {
         success: false,
@@ -64,16 +62,27 @@ export class ReferralsService {
       };
     }
 
-    // 🔒 جلوگیری از پر بودن سمت
-    const positionTaken = await this.referralModel.findOne({
+    // 🤖 خودکار انتخاب موقعیت (چپ یا راست)
+    const leftChild = await this.referralModel.findOne({
       parent: parent._id,
-      position,
+      position: 'left',
     });
 
-    if (positionTaken) {
+    const rightChild = await this.referralModel.findOne({
+      parent: parent._id,
+      position: 'right',
+    });
+
+    let position: 'left' | 'right';
+
+    if (!leftChild) {
+      position = 'left';
+    } else if (!rightChild) {
+      position = 'right';
+    } else {
       return {
         success: false,
-        message: `The ${position} position is already occupied.`,
+        message: 'Both positions are already occupied.',
       };
     }
 
