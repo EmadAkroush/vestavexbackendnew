@@ -18,12 +18,14 @@ import { randomBytes } from 'crypto';
 import * as path from 'path';
 import * as fs from 'fs';
 import axios from 'axios'; // ✅ اضافه شد برای ارتباط با reCAPTCHA API
+import { ReferralsService } from '../referrals/referrals.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel('Referral') private readonly referralModel: Model<Referral>,
+    private readonly referralsService: ReferralsService, // ✅ این خط
     private jwtService: JwtService,
   ) {}
   private readonly logger = new Logger(AuthService.name);
@@ -48,13 +50,11 @@ export class AuthService {
     }
   }
 
-     generateUsername = () => {
-      return (
-        'u' +
-         Date.now().toString(36) +
-         Math.random().toString(36).substring(2, 6)
-      );
-    };
+  generateUsername = () => {
+    return (
+      'u' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6)
+    );
+  };
 
   // === Register User ===
   async register(dto: any) {
@@ -75,31 +75,15 @@ export class AuthService {
       verificationToken,
     });
 
-    // ✅ اگر referrerCode فرستاده شده باشد، بررسی و ثبت شود
+    // ✅ Register referral if referrerCode is provided
     if (dto.referrerCode) {
-      const referrer = await this.userModel.findOne({
-        vxCode: dto.referrerCode,
-      });
-      if (referrer) {
-        // ثبت رابطه‌ی ارجاع
-        user.referredBy = referrer.vxCode;
-        await user.save();
+      const referralResult = await this.referralsService.registerReferral(
+        dto.referrerCode,
+        user._id.toString(),
+      );
 
-        await this.referralModel.create({
-          referrer: referrer._id,
-          referredUser: user._id,
-        });
-
-        referrer.referrals.push(
-          new mongoose.Types.ObjectId(user._id.toString()),
-        );
-        await referrer.save();
-      } else {
-        // ⚠️ اگر کد لیدر اشتباه بود — برای فرانت اند ارسال شود
-        return {
-          success: false,
-          message: 'Invalid referral code.',
-        };
+      if (!referralResult.success) {
+        return referralResult;
       }
     }
 
