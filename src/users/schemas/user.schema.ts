@@ -74,6 +74,12 @@ export class User extends Document {
   @Prop({ type: Number, default: 0 })
   bonusBalance: number;
 
+  @Prop({ type: Number, default: 0 })
+  totalIncome: number;
+
+  @Prop({ type: Number, default: 0 })
+  totalBalance: number;
+  
   // ===== Binary Plan Volumes =====
   @Prop({ type: Number, default: 0 })
   leftVolume: number;
