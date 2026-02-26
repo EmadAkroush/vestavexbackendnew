@@ -32,11 +32,6 @@ export class ReferralsController {
   }
 
 
-
-  // 📈 آمار کلی
-
-
-
   // 🔍 جزئیات نود خاص
   @Post('node')
   async getReferralNodeDetails(@Body('userId') userId: string) {
