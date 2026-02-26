@@ -102,6 +102,8 @@ export class UsersService {
       profitBalance: user.profitBalance ?? 0,
       referralBalance: user.referralBalance ?? 0,
       bonusBalance: user.bonusBalance ?? 0,
+      totalBalance: user.totalBalance ?? 0,
+      totalIncome: user.totalIncome ?? 0,
     };
   }
 

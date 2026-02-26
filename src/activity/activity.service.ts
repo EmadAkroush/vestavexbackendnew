@@ -74,6 +74,37 @@ export class ActivityService {
     };
   }
 
+    // 🟣 انتقال از referralBalance → mainBalance
+  async transferTotalToMain(userId: string, amount: number) {
+    const user = await this.userModel.findById(userId);
+    if (!user) throw new NotFoundException('User not found');
+    if (user.totalBalance < amount)
+      throw new BadRequestException('Insufficient referral profit balance');
+
+    user.totalBalance -= amount;
+    user.mainBalance += amount;
+    await user.save();
+
+    // 📘 ثبت تراکنش
+    await this.transactionsService.createTransaction({
+      userId: user._id.toString(),
+      type: 'transfer',
+      amount,
+      currency: 'USD',
+      status: 'completed',
+      note: `Transferred ${amount} USD from Total Balance to Main Balance.`,
+    });
+
+    return {
+      success: true,
+      message: `✅ ${amount} USD transferred from Total Balance to Main Balance.`,
+      balances: {
+        mainBalance: user.mainBalance,
+        totalBalance: user.totalBalance,
+      },
+    };
+  }
+
   // 🟡 انتقال از bonusBalance → mainBalance
   async transferBonusToMain(userId: string, amount: number) {
     const user = await this.userModel.findById(userId);
