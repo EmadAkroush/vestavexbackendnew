@@ -102,7 +102,7 @@ export class TransactionsService {
     return await this.transactionModel.findById(id);
   }
 
-  // 🟥 برداشت از حساب (با 5٪ کارمزد)
+  // 🟥 برداشت از حساب (با 7٪ کارمزد)
   async requestWithdrawal(userId: string, amount: number) {
     if (amount <= 0) {
       throw new BadRequestException('Invalid withdrawal amount');
@@ -134,8 +134,8 @@ export class TransactionsService {
 
     await user.save();
 
-    // 💸 محاسبه مبلغ خالص بعد از 5٪ کارمزد
-    const netAmount = amount * 0.95;
+    // 💸 محاسبه مبلغ خالص بعد از 7٪ کارمزد
+    const netAmount = amount * 0.93;
 
     // 📘 ثبت تراکنش برداشت
     const tx = new this.transactionModel({
