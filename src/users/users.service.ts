@@ -72,7 +72,9 @@ export class UsersService {
       | 'profitBalance'
       | 'referralBalance'
       | 'bonusBalance'
-      | 'maxCapBalance',
+      | 'maxCapBalance'
+      | 'totalIncome'
+      | 'totalBalance',
     amount: number,
   ) {
     const user = await this.findById(userId);

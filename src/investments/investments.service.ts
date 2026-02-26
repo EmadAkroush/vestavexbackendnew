@@ -265,6 +265,18 @@ export class InvestmentsService {
         },
       });
 
+      await this.userModel.findByIdAndUpdate(inv.user._id, {
+        $inc: {
+          totalIncome: profit,
+        },
+      });
+
+      await this.userModel.findByIdAndUpdate(inv.user._id, {
+        $inc: {
+          totalBalance: profit,
+        },
+      });
+
       // 🧾 ثبت تراکنش
       await this.transactionsService.createTransaction({
         userId: inv.user._id.toString(),
