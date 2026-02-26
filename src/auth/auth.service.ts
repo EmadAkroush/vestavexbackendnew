@@ -308,36 +308,67 @@ export class AuthService {
       to: email,
       subject: 'Your VXBUSINESS Verification Code',
       html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #0b0f14; color: #e5fff7;">
-          <h2 style="color:#2ff1b4;">Welcome to VXBUSINESS</h2>
-          <p style="font-size:15px;">Please use the verification code below to verify your email address.</p>
+  <div style="font-family: Arial, sans-serif; padding: 0; margin:0; background:#020617;">
+    <div style="
+      max-width:600px;
+      margin:0 auto;
+      padding:30px 20px;
+      background: radial-gradient(circle at top left, #1e293b, #020617 70%);
+      color:#e0e7ff;
+      border-radius:16px;
+      border:1px solid rgba(99,102,241,0.15);
+      box-shadow:0 0 40px rgba(79,70,229,0.25);
+    ">
+      
+      <!-- Header -->
+      <div style="text-align:center;margin-bottom:20px;">
+        <h2 style="
+          margin:0;
+          font-size:24px;
+          font-weight:bold;
+          background:linear-gradient(90deg,#2563EB,#4F46E5,#7C3AED);
+          -webkit-background-clip:text;
+          -webkit-text-fill-color:transparent;
+        ">
+          Welcome to VXBUSINESS
+        </h2>
+      </div>
 
-          <div style="margin:25px 0; text-align:center;">
-            <div style="
-              display:inline-block;
-              background:#1a2b23;
-              border:2px dashed #2ff1b4;
-              color:#2ff1b4;
-              font-size:18px;
-              font-weight:bold;
-              letter-spacing:2px;
-              padding:12px 20px;
-              border-radius:8px;
-            ">
-              ${token}
-            </div>
-          </div>
+      <p style="font-size:15px; line-height:1.7; color:#c7d2fe;">
+        Please use the verification code below to verify your email address.
+      </p>
 
-          <p style="font-size:14px;color:#9fc9b7;">
-            Copy the above code and paste it into the verification form in your VXBUSINESS account.
-          </p>
-
-          <hr style="border:0;border-top:1px solid #2ff1b422;margin:25px 0;">
-          <p style="font-size:12px;color:#6b8a7c;">
-            If you did not request this, please ignore this email.
-          </p>
+      <!-- Token Box -->
+      <div style="margin:30px 0; text-align:center;">
+        <div style="
+          display:inline-block;
+          background:linear-gradient(135deg,#1e293b,#020617);
+          border:2px dashed #6366f1;
+          color:#a5b4fc;
+          font-size:20px;
+          font-weight:bold;
+          letter-spacing:3px;
+          padding:14px 26px;
+          border-radius:12px;
+          box-shadow:0 0 18px rgba(99,102,241,0.35);
+        ">
+          \${token}
         </div>
-      `,
+      </div>
+
+      <p style="font-size:14px; color:#a5b4fc; line-height:1.7;">
+        Copy the above code and paste it into the verification form in your VXBUSINESS account.
+      </p>
+
+      <hr style="border:0;border-top:1px solid rgba(99,102,241,0.25);margin:30px 0;">
+
+      <p style="font-size:12px; color:#818cf8;">
+        If you did not request this, please ignore this email.
+      </p>
+
+    </div>
+  </div>
+`,
     };
 
     await transporter.sendMail(mailOptions);
@@ -364,40 +395,66 @@ export class AuthService {
     // 🔥 HTML Template Inline (English)
     // ============================
     const html = `
-  <div style="font-family: Arial, sans-serif; direction: ltr; text-align: left; background:#f5f5f5; padding:40px;">
-    <div style="max-width:600px; margin:auto; background:white; border-radius:12px; padding:30px; border:1px solid #eee;">
+  <div style="font-family: Arial, sans-serif; direction: ltr; text-align: left; background:#020617; padding:40px;">
+    <div style="
+      max-width:600px;
+      margin:auto;
+      background: radial-gradient(circle at top left, #1e293b, #020617 70%);
+      border-radius:16px;
+      padding:34px 30px;
+      border:1px solid rgba(99,102,241,0.15);
+      box-shadow:0 0 45px rgba(79,70,229,0.25);
+      color:#e0e7ff;
+    ">
       
-      <h2 style="color:#0b6d20;">Hello ${name} 🌿</h2>
+      <h2 style="
+        margin:0 0 16px 0;
+        font-size:24px;
+        font-weight:bold;
+        background:linear-gradient(90deg,#2563EB,#4F46E5,#7C3AED);
+        -webkit-background-clip:text;
+        -webkit-text-fill-color:transparent;
+      ">Hello ${name} 🌿</h2>
 
-      <p style="font-size:15px; color:#333;">
-        A password reset request has been submitted for your account at <strong>VXBUSINESS</strong>.
+      <p style="font-size:15px; color:#c7d2fe; line-height:1.7;">
+        A password reset request has been submitted for your account at <strong style="color:#a5b4fc;">VXBUSINESS</strong>.
       </p>
 
-      <p style="font-size:15px; color:#333;">
+      <p style="font-size:15px; color:#c7d2fe; line-height:1.7;">
         To reset your password, simply click the button below:
       </p>
 
       <div style="text-align:center; margin:35px 0;">
         <a href="${resetUrl}" 
-          style="background:#0b6d20; color:white; padding:14px 28px; font-size:16px; border-radius:8px; text-decoration:none;">
+          style="
+            display:inline-block;
+            background:linear-gradient(135deg,#2563EB,#7C3AED);
+            color:white;
+            padding:14px 28px;
+            font-size:16px;
+            border-radius:12px;
+            text-decoration:none;
+            font-weight:600;
+            box-shadow:0 10px 25px rgba(79,70,229,0.35);
+          ">
           Reset Password
         </a>
       </div>
 
-      <p style="font-size:13px; color:#777;">
+      <p style="font-size:13px; color:#a5b4fc;">
         If you did not request this action, please ignore this email.
       </p>
 
-      <hr style="margin:25px 0; border:0; border-top:1px solid #eee;" />
+      <hr style="margin:25px 0; border:0; border-top:1px solid rgba(99,102,241,0.25);" />
 
-      <p style="font-size:12px; color:#999; text-align:center;">
+      <p style="font-size:12px; color:#818cf8; text-align:center; line-height:1.7;">
         VXBUSINESS Support Team 🌱<br/>
         This link is valid for 1 hour.
       </p>
 
     </div>
   </div>
-  `;
+`;
 
     const mailOptions = {
       from: `"VXBUSINESS Support" <${process.env.MAIL_USER}>`,
