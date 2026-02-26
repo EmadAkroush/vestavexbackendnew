@@ -295,17 +295,12 @@ export class InvestmentsService {
     this.logger.log('✅ Monthly profit calculation finished');
   }
 
-  // // 🕒 کرون جاب خودکار
-  // @Cron(CronExpression.EVERY_DAY_AT_1AM)
-  // async autoCalculateProfits() {
-  //   this.logger.log('⏰ Starting daily profit cron job...');
-  //   await this.calculateDailyProfits();
-  // }
+
 
   // 🕒 کرون جاب خودکار
-  @Cron(CronExpression.EVERY_DAY_AT_1AM)
+  @Cron(CronExpression.EVERY_1ST_DAY_OF_MONTH_AT_MIDNIGHT)
   async autoCalculateProfits() {
-    this.logger.log('⏰ Starting daily profit cron job...');
+    this.logger.log('⏰ Starting monthly profit cron job...');
 
     // ✅ روزهای غیر تعطیل → محاسبه سود
     await this.calculateMonthlyProfits();
