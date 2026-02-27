@@ -29,6 +29,7 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
   private readonly logger = new Logger(AuthService.name);
+
   // ✅ متد جدید برای بررسی reCAPTCHA
   private async verifyRecaptcha(token: string) {
     const secret = process.env.RECAPTCHA_SECRET;
@@ -44,6 +45,8 @@ export class AuthService {
         },
       },
     );
+
+    console.log('RECAPTCHA GOOGLE RESPONSE:', response.data); // 👈 مهم
 
     if (!response.data.success) {
       throw new UnauthorizedException('reCAPTCHA verification failed');
@@ -132,9 +135,9 @@ export class AuthService {
   // === Login User ===
   async login(email: string, password: string, recaptchaToken?: string) {
     // 🧠 بررسی reCAPTCHA قبل از ورود
-    // if (!recaptchaToken)
-    //   throw new BadRequestException('Missing reCAPTCHA token');
-    // await this.verifyRecaptcha(recaptchaToken);
+    if (!recaptchaToken)
+      throw new BadRequestException('Missing reCAPTCHA token');
+    await this.verifyRecaptcha(recaptchaToken);
 
     const user = await this.userModel.findOne({
       $or: [{ email }, { vxCode: email }],
