@@ -8,7 +8,7 @@ export class PackagesController {
   constructor(private readonly packagesService: PackagesService) {}
 
   // ➕ Create package (Admin)
-  @Post()
+  @Post('create')
   create(@Body() dto: CreatePackageDto) {
     return this.packagesService.create(dto);
   }
