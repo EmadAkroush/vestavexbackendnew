@@ -12,7 +12,6 @@ import { Payment } from './payment.schema';
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
 
-  // ---------------- Blockchain Config ----------------
   private readonly BNB_CHAIN_ID = 56;
   private readonly USDT_ADDRESS = '0x55d398326f99059fF775485246999027B3197955';
   private readonly RECEIVER = '0x1f6eaDD43431A9A7F76Ecb7D4A385293Cc7aFf04';
@@ -30,8 +29,10 @@ export class PaymentsService {
   constructor(
     private readonly usersService: UsersService,
     private readonly transactionsService: TransactionsService,
-   @InjectModel(Payment.name) private paymentModel: Model<Payment>,
+    @InjectModel(Payment.name) private paymentModel: Model<Payment>,
   ) {}
+
+  // ================= EXISTING CODE (UNCHANGED) =================
 
   async createWeb3Payment(userId: string, amountUsd: number) {
     const paymentId = `WEB3_${Date.now()}_${userId}`;
@@ -63,7 +64,6 @@ export class PaymentsService {
     };
   }
 
-  // ---------------- ثبت txHash از فرانت ----------------
   async submitTxHash(paymentId: string, txHash: string, fromAddress: string) {
     const payment = await this.paymentModel.findOne({ paymentId });
 
@@ -80,7 +80,6 @@ export class PaymentsService {
     return { success: true };
   }
 
-  // ---------------- بررسی تراکنش روی بلاک‌چین ----------------
   private async verifyTransaction(payment: Payment): Promise<number | null> {
     const receipt = await this.provider.getTransactionReceipt(payment.txHash);
 
@@ -89,7 +88,6 @@ export class PaymentsService {
     const tx = await this.provider.getTransaction(payment.txHash);
     if (!tx || !tx.to) return null;
 
-    // باید به قرارداد USDT خورده باشه
     if (tx.to.toLowerCase() !== this.USDT_ADDRESS.toLowerCase()) return null;
 
     const iface = new ethers.utils.Interface(this.ERC20_ABI);
@@ -107,13 +105,12 @@ export class PaymentsService {
 
     if (to.toLowerCase() !== this.RECEIVER.toLowerCase()) return null;
 
-    const decimals = 18; // USDT on BSC
+    const decimals = 18;
     const amountUSDT = Number(ethers.utils.formatUnits(amount, decimals));
 
     return amountUSDT;
   }
 
-  // ---------------- تایید نهایی پرداخت ----------------
   private async confirmPayment(payment: Payment, actualAmount: number) {
     payment.status = 'finished';
     payment.actualAmount = actualAmount;
@@ -141,8 +138,7 @@ export class PaymentsService {
     );
   }
 
-  // ---------------- Cron Job بررسی پرداخت‌ها ----------------
-  @Cron('*/30 * * * * *') // هر 30 ثانیه
+  @Cron('*/30 * * * * *')
   async checkPendingPayments() {
     const payments = await this.paymentModel.find({
       status: 'pending',
@@ -161,5 +157,61 @@ export class PaymentsService {
         );
       }
     }
+  }
+
+  // ================= NEW FUNCTIONS =================
+
+  private buildLabels(range: string) {
+    if (range === 'Day') {
+      return Array.from({ length: 24 }, (_, i) => `${i}:00`);
+    }
+    if (range === 'Month') {
+      return Array.from({ length: 30 }, (_, i) => `Day ${i + 1}`);
+    }
+    return Array.from({ length: 12 }, (_, i) => `Month ${i + 1}`);
+  }
+
+  // 📊 DEPOSIT CHART
+  async getDepositChart(range: string) {
+    const labels = this.buildLabels(range);
+    const data = new Array(labels.length).fill(0);
+
+    const transactions =
+      await this.transactionsService.getAllByType('deposit'); // فرض
+
+    transactions.forEach((t) => {
+      const date = new Date((t as any).createdAt);
+
+      let index = 0;
+      if (range === 'Day') index = date.getHours();
+      else if (range === 'Month') index = date.getDate() - 1;
+      else index = date.getMonth();
+
+      data[index] += t.amount;
+    });
+
+    return { labels, data };
+  }
+
+  // 📉 WITHDRAW CHART
+  async getWithdrawChart(range: string) {
+    const labels = this.buildLabels(range);
+    const data = new Array(labels.length).fill(0);
+
+    const transactions =
+      await this.transactionsService.getAllByType('withdraw'); // فرض
+
+    transactions.forEach((t) => {
+      const date = new Date((t as any).createdAt);
+
+      let index = 0;
+      if (range === 'Day') index = date.getHours();
+      else if (range === 'Month') index = date.getDate() - 1;
+      else index = date.getMonth();
+
+      data[index] += t.amount;
+    });
+
+    return { labels, data };
   }
 }

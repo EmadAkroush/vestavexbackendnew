@@ -12,6 +12,13 @@ export class TransactionsService {
     @InjectModel(User.name) private userModel: Model<User>,
   ) {}
 
+  async getAllByType(type: string) {
+    return this.transactionModel.find({
+      type,
+      status: 'finished',
+    });
+  }
+
   // 🔥 دریافت لیست کامل تراکنش‌ها برای سوپر ادمین (بدون فیلتر + بدون پیجینیشن)
   async getAllTransactionsForAdmin() {
     return await this.transactionModel
