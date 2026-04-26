@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Logger } from '@nestjs/common';
+import { Controller, Post, Body, Logger, Get, Query } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 
 @Controller('payments')
@@ -6,6 +6,7 @@ export class PaymentsController {
   private readonly logger = new Logger(PaymentsController.name);
 
   constructor(private readonly paymentsService: PaymentsService) {}
+
   @Post('web3/create')
   create(@Body() body) {
     return this.paymentsService.createWeb3Payment(body.userId, body.amountUsd);
@@ -18,5 +19,19 @@ export class PaymentsController {
       body.txHash,
       body.fromAddress,
     );
+  }
+
+  // ================= NEW ROUTES =================
+
+  // 📊 Deposit Chart
+  @Get('chart/deposits')
+  getDepositChart(@Query('range') range: string) {
+    return this.paymentsService.getDepositChart(range || 'Day');
+  }
+
+  // 📉 Withdraw Chart
+  @Get('chart/withdraws')
+  getWithdrawChart(@Query('range') range: string) {
+    return this.paymentsService.getWithdrawChart(range || 'Day');
   }
 }
