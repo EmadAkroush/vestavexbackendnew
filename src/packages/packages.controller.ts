@@ -25,7 +25,7 @@ export class PackagesController {
     return this.packagesService.findOne(id);
   }
 
-  // ✏️ Update package
+ 
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -33,6 +33,13 @@ export class PackagesController {
   ) {
     return this.packagesService.update(id, dto);
   }
+
+  //   @Post('update')
+  // async update(@Body() body: any) {
+  //   const { userId, ...updateData } = body;
+
+  //   return this.packagesService.update(userId, updateData);
+  // }
 
   // ❌ Delete package
   @Delete(':id')
