@@ -21,7 +21,7 @@ export class TransactionsController {
     return this.transactionsService.getAllTransactionsForAdmin();
   }
 
-  // 🔹 دریافت لیست تراکنش‌های کاربر
+
   @UseGuards(JwtAuthGuard)
   @Post('updatestatusadmin')
   async updateStatusAdmin(@Body() body) {
@@ -89,6 +89,8 @@ export class TransactionsController {
 
     return this.transactionsService.requestWithdrawal(userId, body.amount);
   }
+
+
 
   @UseGuards(JwtAuthGuard)
   @Post('chart/profit')
