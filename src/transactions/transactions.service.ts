@@ -179,7 +179,6 @@ export class TransactionsService {
       .aggregate([
         {
           $match: {
-            userId: new mongoose.Types.ObjectId(userId),
             type: 'profit',
             status: 'completed',
           },

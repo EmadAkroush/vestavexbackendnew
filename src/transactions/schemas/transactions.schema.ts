@@ -8,7 +8,7 @@ export class Transaction extends Document {
   userId: string;
 
   @Prop({ required: true })
-  type: string; // deposit, withdraw, profit, referral, bonus
+  type: string; // deposit, withdraw, investment,  profit, binary-profit , bonus
 
   @Prop({ required: true })
   amount: number; // مبلغ تراکنش
