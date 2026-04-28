@@ -21,17 +21,5 @@ export class PaymentsController {
     );
   }
 
-  // ================= NEW ROUTES =================
 
-  // 📊 Deposit Chart
-  @Get('chart/deposits/:range')
-  getDepositChart(@Query('range') range: string) {
-    return this.paymentsService.getDepositChart(range || 'Month');
-  }
-
-  // 📉 Withdraw Chart
-  @Get('chart/withdraws/:range')
-  getWithdrawChart(@Query('range') range: string) {
-    return this.paymentsService.getWithdrawChart(range || 'Day');
-  }
 }
