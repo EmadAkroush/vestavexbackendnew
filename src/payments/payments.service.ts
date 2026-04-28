@@ -152,8 +152,9 @@ export class PaymentsService {
 
         await this.confirmPayment(payment, paidAmount);
       } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
         this.logger.warn(
-          `⚠️ Verify failed | payment=${payment._id} ${err.message}`,
+          `⚠️ Verify failed | payment=${payment._id} ${message}`,
         );
       }
     }
