@@ -226,8 +226,67 @@ export class TransactionsService {
       .aggregate([
         {
           $match: {
-            userId: new mongoose.Types.ObjectId(userId),
             type: { $in: ['referral', 'binary-profit'] },
+            status: 'completed',
+          },
+        },
+        {
+          $group: {
+            _id: { $month: '$createdAt' },
+            total: { $sum: '$amount' },
+          },
+        },
+        { $sort: { _id: 1 } },
+        {
+          $project: {
+            _id: 0,
+            month: '$_id',
+            total: 1,
+          },
+        },
+      ])
+      .then((rows) => ({
+        labels: rows.map((r) => this.monthName(r.month)),
+        data: rows.map((r) => r.total),
+      }));
+  }
+
+  async getDepositChart(userId: string) {
+    return this.transactionModel
+      .aggregate([
+        {
+          $match: {
+            type: { $in: ['deposit'] },
+            status: 'completed',
+          },
+        },
+        {
+          $group: {
+            _id: { $month: '$createdAt' },
+            total: { $sum: '$amount' },
+          },
+        },
+        { $sort: { _id: 1 } },
+        {
+          $project: {
+            _id: 0,
+            month: '$_id',
+            total: 1,
+          },
+        },
+      ])
+      .then((rows) => ({
+        labels: rows.map((r) => this.monthName(r.month)),
+        data: rows.map((r) => r.total),
+      }));
+  }
+
+  async getWithdrawChart(userId: string) {
+    return this.transactionModel
+      .aggregate([
+        {
+          $match: {
+            type: { $in: ['withdraw'] },
             status: 'completed',
           },
         },

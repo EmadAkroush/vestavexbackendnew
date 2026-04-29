@@ -21,7 +21,6 @@ export class TransactionsController {
     return this.transactionsService.getAllTransactionsForAdmin();
   }
 
-
   @UseGuards(JwtAuthGuard)
   @Post('updatestatusadmin')
   async updateStatusAdmin(@Body() body) {
@@ -90,8 +89,6 @@ export class TransactionsController {
     return this.transactionsService.requestWithdrawal(userId, body.amount);
   }
 
-
-
   @UseGuards(JwtAuthGuard)
   @Post('chart/profit')
   async profitChart(@Body() body: { userId: string }) {
@@ -102,5 +99,17 @@ export class TransactionsController {
   @Post('chart/vx')
   async vxChart(@Body() body: { userId: string }) {
     return this.transactionsService.getVXChart(body.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('chart/deposit')
+  async getDepositChart(@Body() body: { userId: string }) {
+    return this.transactionsService.getDepositChart(body.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('chart/withdraw')
+  async getWithdrawChart(@Body() body: { userId: string }) {
+    return this.transactionsService.getWithdrawChart(body.userId);
   }
 }
