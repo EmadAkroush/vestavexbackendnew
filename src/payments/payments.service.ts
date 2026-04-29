@@ -127,7 +127,7 @@ export class PaymentsService {
       type: 'deposit',
       amount: actualAmount,
       currency: 'USD',
-      status: 'finished',
+      status: 'completed',
       note: `Web3 payment confirmed #${payment._id}`,
     });
 
